@@ -481,6 +481,15 @@ input[type="checkbox"] {
     border-color: var(--accent);
 }
 
+.sidebar-action-row {
+    padding: 8px 15px;
+    border-bottom: 1px solid var(--border);
+}
+
+.sidebar-action-row .btn {
+    width: 100%;
+}
+
 .sub-control {
     margin-left: 20px;
     display: flex;

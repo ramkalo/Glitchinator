@@ -25,12 +25,8 @@
                     <button class="btn" id="savePresetBtn" disabled>Save Preset</button>
                     <button class="btn" id="loadPresetBtn">Load Preset</button>
                 </div>
-                <div class="toolbar-group">
-                    <button class="btn" id="collapseAllBtn">Collapse All</button>
-                </div>
             </div>
             <input type="file" id="fileInput" accept="image/*">
-            <input type="file" id="secondFileInput" accept="image/*">
         </header>
         
         <div class="main-content">
@@ -56,6 +52,10 @@
                     <button class="btn" id="loadPresetBtnMobile">Load Preset</button>
                 </div>
 
+                <div class="sidebar-action-row">
+                    <button class="btn" id="collapseAllBtn">Collapse All</button>
+                </div>
+
                 <!-- Double Exposure -->
                 <div class="tool-section">
                     <div class="tool-header">
@@ -67,6 +67,7 @@
                             <input type="checkbox" data-param="doubleExposureEnabled">
                             Enable
                         </label>
+                        <input type="file" id="secondFileInput" accept="image/*" style="display:none;">
                         <div class="control-group">
                             <div class="control-row">
                                 <button class="btn" id="loadSecondImageBtn">Load Image</button>
