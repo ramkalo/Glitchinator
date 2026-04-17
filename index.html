@@ -2,8 +2,24 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Retroinator</title>
+
+    <!-- PWA theme & icons -->
+    <meta name="theme-color" content="#0a0a1a">
+    <meta name="color-scheme" content="dark">
+    <link rel="icon" href="/favicon.ico" sizes="48x48">
+    <link rel="icon" href="/retroinator-icon.svg" sizes="any" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png">
+
+    <!-- iOS standalone PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Retroinator">
+
+    <!-- Description for share/preview cards -->
+    <meta name="description" content="Retro photo effects editor — grain, VHS, CRT, and more.">
+
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -32,17 +48,26 @@
         <div class="main-content">
             <div class="canvas-area">
                 <div class="process-indicator" id="processIndicator">Processing...</div>
-                <div class="canvas-wrapper">
+                <div class="canvas-wrapper" id="canvasWrapper">
                     <canvas id="mainCanvas"></canvas>
+                    <canvas id="overlayCanvas" aria-hidden="true"></canvas>
                     <div class="drop-zone" id="dropZone">
                         <div class="drop-zone-icon">&#128247;</div>
                         <div class="drop-zone-text">Drop an image here or click Load</div>
                         <button class="btn btn-primary" id="dropZoneBtn">Load Image</button>
                     </div>
                 </div>
+                <!-- Floating pill shown during canvas-drag slider adjust -->
+                <div id="adjustPill" class="adjust-pill hidden">
+                    <span id="adjustPillLabel">—</span>: <span id="adjustPillValue">—</span>
+                </div>
             </div>
-            
+
             <aside class="sidebar">
+                <!-- Drag handle — tap to toggle sheet state on mobile -->
+                <div class="sheet-handle" id="sheetHandle">
+                    <div class="sheet-handle-bar"></div>
+                </div>
                 <div class="image-info" id="imageInfo">No image loaded</div>
 
                 <div class="sidebar-controls">
@@ -669,6 +694,6 @@
 
     <div class="notification" id="notification"></div>
     
-    <script src="js/app.js"></script>
+    <script type="module" src="/src/main.js"></script>
 </body>
 </html>

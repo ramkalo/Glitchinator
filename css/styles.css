@@ -126,6 +126,17 @@ body {
 .canvas-wrapper {
     position: relative;
     box-shadow: 0 0 40px rgba(0,0,0,0.5);
+    touch-action: none; /* allow our touchmove handlers to call preventDefault */
+}
+
+/* Sheet handle hidden on desktop */
+.sheet-handle {
+    display: none;
+}
+
+/* Adjust pill hidden on desktop */
+.adjust-pill {
+    display: none;
 }
 
 #mainCanvas {
@@ -133,6 +144,16 @@ body {
     max-width: 100%;
     max-height: calc(100vh - 250px);
     background: #000;
+}
+
+/* Timestamp overlay — floats above mainCanvas, no interaction, matches its display size */
+#overlayCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
 }
 
 .drop-zone {
@@ -599,48 +620,135 @@ input[type="checkbox"] {
         flex-direction: column;
     }
 
-    .sidebar {
-        position: static;
-        width: 100%;
-        height: auto;
-        max-height: 50vh;
-        z-index: auto;
-        transform: none;
-        transition: none;
-        border-top: 2px solid var(--border);
-        border-left: none;
-        border-radius: 0;
-        display: flex;
-        flex-direction: column;
+    /* ── Canvas area fills full height (sidebar is now fixed/out-of-flow) ── */
+    .main-content {
+        height: 100vh;
         overflow: hidden;
     }
 
-    .sidebar.open {
-        transform: none;
-    }
-
-    .sidebar-backdrop {
-        display: none !important;
-    }
-
-    .sidebar-backdrop.open {
-        display: none !important;
-    }
-
-    body.sidebar-open {
-        overflow: auto;
-    }
-
     .canvas-area {
-        min-height: auto;
+        flex: 1;
+        min-height: 0;
         padding: 0;
-        max-height: 50vh;
+        /* Reserve space so the image isn't hidden behind the peeking sheet */
+        padding-bottom: 17vh;
     }
 
     #mainCanvas {
-        max-height: 50vh;
+        max-height: calc(83vh - 20px);
         margin: 0;
         padding: 0;
+    }
+
+    /* Touch: disable browser scroll on canvas so our gesture handlers fire */
+    .canvas-wrapper {
+        touch-action: none;
+    }
+
+    /* ── Bottom sheet ────────────────────────────────────────────────── */
+    /* Sheet is always 90vh tall; translateY shifts how much peeks above fold */
+    .sidebar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 90vh;
+        /* Default: peek — 17vh visible above bottom */
+        transform: translateY(calc(90vh - 17vh));
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 16px 16px 0 0;
+        border-top: none;
+        border-left: none;
+        z-index: 100;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Expanded: full 90vh visible */
+    .sidebar.sheet-expanded {
+        transform: translateY(0);
+    }
+
+    /* Adjust mode: only the 50px handle peeks */
+    .sidebar.sheet-adjust {
+        transform: translateY(calc(90vh - 50px));
+    }
+
+    .sidebar-backdrop { display: none !important; }
+    body.sidebar-open { overflow: hidden; }
+
+    /* ── Sheet handle ────────────────────────────────────────────────── */
+    .sheet-handle {
+        flex-shrink: 0;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+    }
+
+    /* Unhide adjust pill on mobile */
+    .adjust-pill {
+        display: block;
+    }
+
+    .sheet-handle-bar {
+        width: 40px;
+        height: 5px;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.25);
+        transition: background 0.15s;
+    }
+
+    .sheet-handle:active .sheet-handle-bar,
+    .sheet-handle:hover .sheet-handle-bar {
+        background: rgba(255, 255, 255, 0.55);
+    }
+
+    /* Scrollable content area inside the sheet */
+    .sidebar-controls {
+        flex: 1;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        min-height: 0;
+    }
+
+    /* ── Adjust pill ─────────────────────────────────────────────────── */
+    /* Floats at top of screen during canvas-drag slider adjust mode */
+    .adjust-pill {
+        position: fixed;
+        top: max(16px, env(safe-area-inset-top, 16px));
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(10, 10, 26, 0.92);
+        border: 1px solid #4ecca3;
+        color: #4ecca3;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-family: 'JetBrains Mono', 'Courier New', monospace;
+        font-size: 14px;
+        pointer-events: none;
+        z-index: 200;
+        white-space: nowrap;
+        opacity: 1;
+        transition: opacity 0.2s;
+        backdrop-filter: blur(4px);
+    }
+
+    .adjust-pill.hidden {
+        opacity: 0;
+    }
+
+    /* Cursor hint when scrubbing */
+    body.touch-adjust-active .canvas-wrapper {
+        cursor: ew-resize;
     }
 
     .control-row {

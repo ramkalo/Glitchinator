@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Dark background -->
+  <rect width="512" height="512" rx="80" fill="#0a0a1a"/>
+
+  <!-- CRT scanline overlay (decorative) -->
+  <rect width="512" height="512" rx="80" fill="url(#scanlines)" opacity="0.08"/>
+
+  <!-- Phosphor glow ring -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="#4ecca3" stroke-width="6" opacity="0.4"/>
+  <circle cx="256" cy="256" r="195" fill="none" stroke="#4ecca3" stroke-width="2" opacity="0.15"/>
+
+  <!-- Big "R" letterform -->
+  <text
+    x="256" y="340"
+    font-family="'Courier New', Courier, monospace"
+    font-size="300"
+    font-weight="700"
+    text-anchor="middle"
+    fill="#4ecca3"
+    filter="url(#glow)"
+  >R</text>
+
+  <!-- Red accent dot (VHS record indicator) -->
+  <circle cx="370" cy="160" r="22" fill="#e94560" opacity="0.9"/>
+  <circle cx="370" cy="160" r="14" fill="#ff6b6b"/>
+
+  <!-- Glow filter -->
+  <defs>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <pattern id="scanlines" patternUnits="userSpaceOnUse" width="512" height="4">
+      <rect width="512" height="2" fill="#000"/>
+    </pattern>
+  </defs>
+</svg>

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(cmd /c \"npm run build 2>&1\")"
+    ]
+  }
+}
