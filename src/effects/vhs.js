@@ -1,15 +1,20 @@
 import { params } from '../state/params.js';
 import { canvas } from '../renderer/glstate.js';
 
-// --- VHS image effects (bleed, tracking, noise) -------------------------
+let cachedBleedBuffer = null;
 
 function applyVHS(imageData, p = params) {
     const data = imageData.data;
     const width = imageData.width;
     const height = imageData.height;
-    const result = new Uint8ClampedArray(data);
+    
+    let result = null;
 
     if (p.vhsBleed > 0) {
+        if (!cachedBleedBuffer || cachedBleedBuffer.length !== data.length) {
+            cachedBleedBuffer = new Uint8ClampedArray(data.length);
+        }
+        result = cachedBleedBuffer;
         const bleed = Math.floor(p.vhsBleed);
         for (let y = 0; y < height; y++) {
             for (let x = bleed; x < width; x++) {
@@ -99,9 +104,10 @@ export function applyVHSTimestamp(ctx, p = params) {
     ctx.fillText(ts, x, y);
 }
 
-// --- CSS overlay canvas renderer (WebGL path only) ----------------------
+// --- CSS overlay canvas renderer -----------------------------------
 // Draws the timestamp onto an absolutely-positioned transparent canvas that
-// sits on top of the WebGL canvas. Zero CPU↔GPU pixel roundtrip.
+// sits on top of the main canvas. Prevents timestamp from being re-rendered
+// on every pixel operation.
 
 export function renderTimestampOverlay(overlayCanvas) {
     overlayCanvas.width  = canvas.width;

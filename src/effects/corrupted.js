@@ -1,5 +1,7 @@
 import { params } from '../state/params.js';
 
+let cachedSrcData = null;
+
 function mulberry32(seed) {
     return function() {
         seed |= 0; seed = seed + 0x6D2B79F5 | 0;
@@ -223,7 +225,13 @@ function sampleFromRegion(region, chunkSize, width, height, srcData, corruptedCh
 function applyCorrupted(imageData, p = params) {
     const { width, height } = imageData;
     const data    = imageData.data;
-    const srcData = new Uint8ClampedArray(data);
+    
+    if (!cachedSrcData || cachedSrcData.length !== data.length) {
+        cachedSrcData = new Uint8ClampedArray(data.length);
+    }
+    const srcData = cachedSrcData;
+    srcData.set(data);
+    
     const rng     = mulberry32(p.corruptedSeed);
 
     const chunkSize = Math.max(1, p.corruptedChunkSize);

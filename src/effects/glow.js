@@ -1,11 +1,14 @@
+let cachedBrightData = null;
+
 function applyGlow(imageData, p) {
     const { width, height, data } = imageData;
     const threshold  = p.glowThreshold;
     const intensity  = p.glowIntensity / 100;
 
-    // Isolate pixels above the luminance threshold, fading smoothly to zero at the cutoff.
-    // This becomes the source layer that spreads outward to form the halo.
-    const brightData = new Uint8ClampedArray(data.length);
+    if (!cachedBrightData || cachedBrightData.length !== data.length) {
+        cachedBrightData = new Uint8ClampedArray(data.length);
+    }
+    const brightData = cachedBrightData;
     for (let i = 0; i < data.length; i += 4) {
         const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
         if (lum > threshold) {

@@ -1,5 +1,9 @@
 import { params } from '../state/params.js';
 
+let cachedBuffer = null;
+let cachedWidth = 0;
+let cachedHeight = 0;
+
 function wavesFormula(xNorm, yNorm) {
     return (
         3.2 * Math.sin(xNorm + 0.3 * Math.cos(2.1 * xNorm) + yNorm) +
@@ -19,7 +23,12 @@ function applyWaves(imageData, p = params) {
     const srcData = imageData.data;
     const width   = imageData.width;
     const height  = imageData.height;
-    const result  = new Uint8ClampedArray(width * height * 4);
+    
+    const neededSize = width * height * 4;
+    if (!cachedBuffer || cachedBuffer.length !== neededSize) {
+        cachedBuffer = new Uint8ClampedArray(neededSize);
+    }
+    const result = cachedBuffer;
 
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {

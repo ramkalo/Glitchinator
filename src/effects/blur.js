@@ -1,10 +1,20 @@
 import { params } from '../state/params.js';
 
+let cachedCurrent = null;
+let cachedTmp = null;
+let cachedResult = null;
+
 function boxBlur(src, width, height, radius, passes) {
     const count = 2 * radius + 1;
-    const current = new Float32Array(src.length);
-    for (let i = 0; i < src.length; i++) current[i] = src[i];
-    const tmp = new Float32Array(src.length);
+    const len = src.length;
+    
+    if (!cachedCurrent || cachedCurrent.length !== len) {
+        cachedCurrent = new Float32Array(len);
+        cachedTmp = new Float32Array(len);
+    }
+    const current = cachedCurrent;
+    const tmp = cachedTmp;
+    for (let i = 0; i < len; i++) current[i] = src[i];
 
     for (let pass = 0; pass < passes; pass++) {
         // Horizontal sweep: current → tmp
@@ -57,7 +67,12 @@ function boxBlur(src, width, height, radius, passes) {
         }
     }
 
-    return new Uint8ClampedArray(current);
+    const resultLen = current.length;
+    if (!cachedResult || cachedResult.length !== resultLen) {
+        cachedResult = new Uint8ClampedArray(resultLen);
+    }
+    for (let i = 0; i < resultLen; i++) cachedResult[i] = current[i];
+    return cachedResult;
 }
 
 function applyBlur(imageData, p = params) {

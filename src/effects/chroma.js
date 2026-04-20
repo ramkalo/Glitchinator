@@ -1,10 +1,16 @@
 import { params } from '../state/params.js';
 
+let cachedBuffer = null;
+
 function applyChromaticAberration(imageData, p = params) {
     const width = imageData.width;
     const height = imageData.height;
     const sourceData = imageData.data;
-    const result = new Uint8ClampedArray(sourceData);
+    
+    if (!cachedBuffer || cachedBuffer.length !== sourceData.length) {
+        cachedBuffer = new Uint8ClampedArray(sourceData.length);
+    }
+    const result = cachedBuffer;
 
     // CMY offsets are complements: Cyan→G+B, Magenta→R+B, Yellow→R+G
     // Each RGB channel's effective shift is the sum of its direct + two complement contributions.

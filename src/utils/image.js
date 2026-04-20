@@ -1,12 +1,9 @@
 import {
-    canvas, ctx, gl,
-    useWebGL,
+    canvas, ctx,
     setOriginalImage, originalImage,
     setSecondImage, secondImage,
-    setSecondTexture, secondTexture,
     setSecondImagePixels
 } from '../renderer/glstate.js';
-import { createTexture, initFramebuffers } from '../renderer/webgl.js';
 import { processImage } from '../renderer/pipeline.js';
 import { showNotification } from './notifications.js';
 
@@ -18,12 +15,6 @@ export function loadImage(file) {
             setOriginalImage(img);
             canvas.width = img.width;
             canvas.height = img.height;
-
-            if (useWebGL) {
-                createTexture(img);
-                initFramebuffers(img.width, img.height);
-            }
-
             ctx.drawImage(img, 0, 0);
 
             document.getElementById('imageInfo').textContent = `${img.width} \u00d7 ${img.height}px`;
@@ -68,15 +59,4 @@ export function rescaleSecondImage() {
     var tempCtx = tempCanvas.getContext('2d');
     tempCtx.drawImage(secondImage, 0, 0, w, h);
     setSecondImagePixels(tempCtx.getImageData(0, 0, w, h).data);
-    if (gl) {
-        if (secondTexture) gl.deleteTexture(secondTexture);
-        const newTex = gl.createTexture();
-        setSecondTexture(newTex);
-        gl.bindTexture(gl.TEXTURE_2D, newTex);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tempCanvas);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    }
 }

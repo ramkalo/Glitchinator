@@ -2,7 +2,6 @@ import { params } from './state/params.js';
 import { undo, redo } from './state/undo.js';
 import { showNotification } from './utils/notifications.js';
 import { canvas } from './renderer/glstate.js';
-import { initWebGL } from './renderer/webgl.js';
 import { processImage } from './renderer/pipeline.js';
 import { loadImage, loadSecondImage } from './utils/image.js';
 import { exportImage } from './ui/export.js';
@@ -223,7 +222,6 @@ function noop() {}
 // ---------------------------------------------------------------------------
 
 renderPresetList();
-initWebGL();
 initStackPanel(rebuildStackUI);
 buildControlsPanel();
 initMobileUI();

@@ -1,5 +1,4 @@
-import { isProcessing, setIsProcessing, setDebounceTimer, debounceTimer, useWebGL, originalImage } from './glstate.js';
-import { renderWebGL } from './webgl.js';
+import { isProcessing, setIsProcessing, setDebounceTimer, debounceTimer, originalImage } from './glstate.js';
 import { processCanvas2D, processCanvas2DStack } from './canvas2d.js';
 import { renderTimestampOverlay } from '../effects/vhs.js';
 import { showProcessIndicator } from '../utils/notifications.js';
@@ -24,16 +23,11 @@ async function doProcess() {
     await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
 
     const stack = getStack();
+    overlayCanvas.getContext('2d').clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
     if (stack.length > 0) {
-        // Stack mode: always use Canvas 2D so each instance gets its own params
-        overlayCanvas.getContext('2d').clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
         processCanvas2DStack(stack);
-    } else if (useWebGL) {
-        renderWebGL();
-        renderTimestampOverlay(overlayCanvas);
     } else {
-        overlayCanvas.getContext('2d').clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
         processCanvas2D();
     }
 

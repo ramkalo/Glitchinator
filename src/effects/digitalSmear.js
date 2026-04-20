@@ -1,5 +1,7 @@
 import { params } from '../state/params.js';
 
+let cachedBuffer = null;
+
 function wavesFormula(xNorm, yNorm) {
     return (
         3.2 * Math.sin(xNorm + 0.3 * Math.cos(2.1 * xNorm) + yNorm) +
@@ -14,7 +16,11 @@ function applyDigitalSmear(imageData, p = params) {
     const width  = imageData.width;
     const height = imageData.height;
     const src    = imageData.data;
-    const result = new Uint8ClampedArray(src);
+    
+    if (!cachedBuffer || cachedBuffer.length !== src.length) {
+        cachedBuffer = new Uint8ClampedArray(src.length);
+    }
+    const result = cachedBuffer;
     const amp    = p.smearWidth / 10;
     const phase  = p.smearShift / 100 * 20;
     const dir    = p.smearDirection ?? 'ltr';

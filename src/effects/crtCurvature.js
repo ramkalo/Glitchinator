@@ -1,3 +1,6 @@
+let cachedSrcData = null;
+let cachedResult = null;
+
 function applyCurvature(imageData, p) {
     if (p.crtCurvature <= 0) return imageData;
 
@@ -5,8 +8,17 @@ function applyCurvature(imageData, p) {
     const height = imageData.height;
     const data   = imageData.data;
 
-    const srcData   = new Uint8ClampedArray(data);
-    const result    = new Uint8ClampedArray(width * height * 4);
+    const neededSize = width * height * 4;
+    if (!cachedSrcData || cachedSrcData.length !== data.length) {
+        cachedSrcData = new Uint8ClampedArray(data.length);
+    }
+    const srcData = cachedSrcData;
+    srcData.set(data);
+    
+    if (!cachedResult || cachedResult.length !== neededSize) {
+        cachedResult = new Uint8ClampedArray(neededSize);
+    }
+    const result = cachedResult;
     const centerX   = (0.5 + p.crtCurvatureX / 100) * width;
     const centerY   = (0.5 - p.crtCurvatureY / 100) * height;
     const maxRadius = Math.min(width, height) * (p.crtCurvatureRadius / 100);
