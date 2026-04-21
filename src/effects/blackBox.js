@@ -114,6 +114,7 @@ export default {
         blackBoxGrainSize:  { default: 1,     min: 1, max: 20 },
         blackBoxStaticSeed: { default: 1 },
     },
-    enabled: (p) => p.blackBoxEnabled,
+    enabled:      (p) => p.blackBoxEnabled,
+    handleParams: ['blackBoxX', 'blackBoxY', 'blackBoxW', 'blackBoxH', 'blackBoxAngle'],
     canvas2d: applyBlackBox,
 };

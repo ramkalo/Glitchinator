@@ -572,7 +572,8 @@ input[type="checkbox"] {
 .notification {
     position: fixed;
     bottom: 20px;
-    right: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
     background: var(--text);
     color: var(--bg-dark);
     padding: 12px 20px;
@@ -585,7 +586,7 @@ input[type="checkbox"] {
 
 .notification.show {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(-50%) translateY(0);
 }
 
 .channel-grid {
@@ -959,6 +960,11 @@ input[type="checkbox"] {
         right: 10px;
         left: 10px;
         text-align: center;
+        transform: translateY(-20px);
+    }
+
+    .notification.show {
+        transform: translateY(0);
     }
     
     .toolbar {

@@ -2,7 +2,7 @@ import { EFFECT_CATALOG, getEffect } from '../effects/registry.js';
 import { getStack, addEffect, removeEffect, moveEffect, duplicateEffect, setInstanceParam } from '../state/effectStack.js';
 import { saveState } from '../state/undo.js';
 import { buildEffectBody } from './stackControls.js';
-import { showFadeOverlay, hideFadeOverlay, showBlurOverlay, hideBlurOverlay } from './canvasPicker.js';
+import { showFadeOverlay, hideFadeOverlay, showBlurOverlay, hideBlurOverlay, showBlackBoxOverlay, hideBlackBoxOverlay } from './canvasPicker.js';
 
 let _expandedId = null;
 
@@ -202,12 +202,19 @@ export function renderStackList() {
     if (expandedInst?.effectName === 'basic') {
         showFadeOverlay(expandedInst);
         hideBlurOverlay();
+        hideBlackBoxOverlay();
     } else if (expandedInst?.effectName === 'blur') {
         showBlurOverlay(expandedInst);
         hideFadeOverlay();
+        hideBlackBoxOverlay();
+    } else if (expandedInst?.effectName === 'blackBox') {
+        showBlackBoxOverlay(expandedInst);
+        hideFadeOverlay();
+        hideBlurOverlay();
     } else {
         hideFadeOverlay();
         hideBlurOverlay();
+        hideBlackBoxOverlay();
     }
 }
 

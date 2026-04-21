@@ -93,17 +93,16 @@ const PARAM_OPTIONS = {
         ['overgrowth',   'Overgrowth'],
         ['worm',         'Worm'],
         ['3-worms',      '3 Worms'],
-        ['6-worms',      '6 Worms'],
-        ['9-worms',      '9 Worms'],
+
     ],
     corruptedColor: [
         ['r', 'Red'], ['g', 'Green'], ['b', 'Blue'],
-        ['rg', 'Red + Green'], ['rb', 'Red + Blue'], ['gb', 'Green + Blue'], ['rgb', 'White'],
-        ['static', 'Static Noise'],
+        ['c', 'Cyan'], ['m', 'Magenta'], ['y', 'Yellow'], ['rgb', 'White'],
+        ['static', 'Static Noise'], ['color-static', 'Color Static'],
         ['perimeter', 'Perimeter'], ['inside', 'Inside'], ['border', 'Image Border'],
         ['center', 'Image Center'], ['random-img', 'Random from Image'],
     ],
-    corruptedColorMode: [['per-chunk', 'Per Chunk'], ['per-zone', 'Per Zone']],
+    corruptedColorMode: [['per-chunk', 'Per Chunk'], ['per-zone', 'Per Zone'], ['glitched', 'Glitched']],
     blackBoxFill: [
         ['black', 'Black'],
         ['white', 'White'],
@@ -147,6 +146,7 @@ export function buildEffectBody(inst, onRebuild) {
         for (const key of group.keys) {
             if (key === enabledKey) continue;
             if (key === 'rotate180' || key === 'rotate270') continue;
+            if (effect.handleParams?.includes(key)) continue;
             const schema = effect.params[key];
             if (!schema) continue;
             const controlEl = buildControl(inst, key, schema, onRebuild);

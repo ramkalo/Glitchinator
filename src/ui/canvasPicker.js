@@ -6,19 +6,21 @@ const uiOverlay = document.getElementById('uiOverlay');
 const uiCtx     = uiOverlay.getContext('2d');
 
 // Active overlay state — only one active at a time
-let _mode      = null;   // 'fade' | 'blur' | null
+let _mode      = null;   // 'fade' | 'blur' | 'blackBox' | null
 let _instId    = null;
 let _dragging  = false;
 let _xKey      = null;
 let _yKey      = null;
+let _handle    = null;   // blackBox: 'center' | 'tl' | 'tr' | 'br' | 'bl'
 
 // Redraw whenever any stack param changes (e.g. a slider)
 onStackChange(() => {
     if (!_instId) return;
     const inst = getStack().find(i => i.id === _instId);
     if (!inst) { _hideActive(); return; }
-    if (_mode === 'fade') drawFade(inst.params);
-    if (_mode === 'blur') drawBlur(inst.params);
+    if (_mode === 'fade')     drawFade(inst.params);
+    if (_mode === 'blur')     drawBlur(inst.params);
+    if (_mode === 'blackBox') drawBlackBox(inst.params);
 });
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -39,6 +41,15 @@ export function showBlurOverlay(inst) {
 
 export function hideBlurOverlay() {
     if (_mode === 'blur') _hideActive();
+}
+
+export function showBlackBoxOverlay(inst) {
+    _activate('blackBox', inst, 'blackBoxX', 'blackBoxY');
+    drawBlackBox(inst.params);
+}
+
+export function hideBlackBoxOverlay() {
+    if (_mode === 'blackBox') _hideActive();
 }
 
 // ── Activation / deactivation ─────────────────────────────────────────────────
@@ -161,6 +172,96 @@ function drawBlur(p) {
     drawHandle(cx, cy);
 }
 
+// BlackBox — rotated box outline + center move handle + 4 corner resize handles
+function getBlackBoxHandles(p) {
+    const W = uiOverlay.width, H = uiOverlay.height;
+    const cx  = (0.5 + p.blackBoxX / 100) * W;
+    const cy  = (0.5 - p.blackBoxY / 100) * H;
+    const bw  = (p.blackBoxW / 100) * W;
+    const bh  = (p.blackBoxH / 100) * H;
+    const ang = (p.blackBoxAngle ?? 0) * Math.PI / 180;
+    const cos = Math.cos(ang), sin = Math.sin(ang);
+    const rot = (lx, ly) => [cx + lx * cos - ly * sin, cy + lx * sin + ly * cos];
+    return {
+        center: [cx, cy],
+        tl:  rot(-bw / 2, -bh / 2),
+        tr:  rot(+bw / 2, -bh / 2),
+        br:  rot(+bw / 2, +bh / 2),
+        bl:  rot(-bw / 2, +bh / 2),
+        rot: rot(0, -bh / 2 - 20),
+    };
+}
+
+function drawRotHandle(cx, cy) {
+    uiCtx.beginPath();
+    uiCtx.arc(cx, cy, 6, 0, Math.PI * 2);
+    uiCtx.fillStyle   = 'rgba(255,255,255,0.92)';
+    uiCtx.shadowColor = 'rgba(0,0,0,0.55)';
+    uiCtx.shadowBlur  = 4;
+    uiCtx.fill();
+    uiCtx.shadowBlur  = 0;
+    uiCtx.strokeStyle = 'rgba(0,0,0,0.4)';
+    uiCtx.lineWidth   = 1.5;
+    uiCtx.stroke();
+}
+
+function drawCornerHandle(cx, cy) {
+    const s = 5;
+    uiCtx.save();
+    uiCtx.translate(cx, cy);
+    uiCtx.shadowColor = 'rgba(0,0,0,0.55)';
+    uiCtx.shadowBlur  = 4;
+    uiCtx.fillStyle   = 'rgba(255,255,255,0.92)';
+    uiCtx.fillRect(-s, -s, s * 2, s * 2);
+    uiCtx.shadowBlur  = 0;
+    uiCtx.strokeStyle = 'rgba(0,0,0,0.4)';
+    uiCtx.lineWidth   = 1.5;
+    uiCtx.strokeRect(-s, -s, s * 2, s * 2);
+    uiCtx.restore();
+}
+
+function drawBlackBox(p) {
+    syncSize();
+    const W = uiOverlay.width, H = uiOverlay.height;
+    uiCtx.clearRect(0, 0, W, H);
+
+    const cx  = (0.5 + p.blackBoxX / 100) * W;
+    const cy  = (0.5 - p.blackBoxY / 100) * H;
+    const bw  = (p.blackBoxW / 100) * W;
+    const bh  = (p.blackBoxH / 100) * H;
+    const ang = (p.blackBoxAngle ?? 0) * Math.PI / 180;
+
+    uiCtx.save();
+    uiCtx.translate(cx, cy);
+    uiCtx.rotate(ang);
+    uiCtx.strokeStyle = 'rgba(255,255,255,0.55)';
+    uiCtx.lineWidth   = 1.5;
+    uiCtx.setLineDash([5, 5]);
+    uiCtx.strokeRect(-bw / 2, -bh / 2, bw, bh);
+    uiCtx.setLineDash([]);
+    uiCtx.restore();
+
+    const handles = getBlackBoxHandles(p);
+
+    // Connector line: top-centre of box → rotation handle
+    // Local [0, -bh/2] rotated: screen_x = cx + (bh/2)*sin, screen_y = cy - (bh/2)*cos
+    const cos = Math.cos(ang), sin = Math.sin(ang);
+    const tcx = cx + (bh / 2) * sin;
+    const tcy = cy - (bh / 2) * cos;
+    uiCtx.beginPath();
+    uiCtx.moveTo(tcx, tcy);
+    uiCtx.lineTo(handles.rot[0], handles.rot[1]);
+    uiCtx.strokeStyle = 'rgba(255,255,255,0.4)';
+    uiCtx.lineWidth   = 1;
+    uiCtx.stroke();
+
+    drawHandle(handles.center[0], handles.center[1]);
+    for (const key of ['tl', 'tr', 'br', 'bl']) {
+        drawCornerHandle(handles[key][0], handles[key][1]);
+    }
+    drawRotHandle(handles.rot[0], handles.rot[1]);
+}
+
 // ── Pointer events ────────────────────────────────────────────────────────────
 
 const HIT_RADIUS = 18;
@@ -184,16 +285,44 @@ function hitTest(e) {
     return Math.sqrt(dx * dx + dy * dy) <= HIT_RADIUS;
 }
 
+function hitTestBlackBox(e) {
+    const inst = getStack().find(i => i.id === _instId);
+    if (!inst) return null;
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const handles = getBlackBoxHandles(inst.params);
+    for (const [name, [hx, hy]] of Object.entries(handles)) {
+        const dx = mx - hx, dy = my - hy;
+        if (Math.sqrt(dx * dx + dy * dy) <= HIT_RADIUS) return name;
+    }
+    return null;
+}
+
 function onHover(e) {
     if (_dragging) return;
-    uiOverlay.style.cursor = hitTest(e) ? 'grab' : 'default';
+    if (_mode === 'blackBox') {
+        const h = hitTestBlackBox(e);
+        uiOverlay.style.cursor = h === 'center' ? 'grab' : h === 'rot' ? 'crosshair' : h ? 'nwse-resize' : 'default';
+    } else {
+        uiOverlay.style.cursor = hitTest(e) ? 'grab' : 'default';
+    }
 }
 
 function onDown(e) {
-    if (!hitTest(e)) return;
-    _dragging = true;
-    uiOverlay.setPointerCapture(e.pointerId);
-    uiOverlay.style.cursor = 'grabbing';
+    if (_mode === 'blackBox') {
+        const h = hitTestBlackBox(e);
+        if (!h) return;
+        _handle   = h;
+        _dragging = true;
+        uiOverlay.setPointerCapture(e.pointerId);
+        uiOverlay.style.cursor = h === 'center' ? 'grabbing' : h === 'rot' ? 'crosshair' : 'nwse-resize';
+    } else {
+        if (!hitTest(e)) return;
+        _dragging = true;
+        uiOverlay.setPointerCapture(e.pointerId);
+        uiOverlay.style.cursor = 'grabbing';
+    }
     uiOverlay.addEventListener('pointermove', onDrag);
     uiOverlay.addEventListener('pointerup',   onUp);
 }
@@ -202,22 +331,57 @@ function onDrag(e) {
     const inst = getStack().find(i => i.id === _instId);
     if (!inst) return;
     const rect = canvas.getBoundingClientRect();
-    const x = Math.round(Math.max(-50, Math.min(50, ((e.clientX - rect.left) / rect.width  - 0.5) * 100)));
-    const y = Math.round(Math.max(-50, Math.min(50, -((e.clientY - rect.top)  / rect.height - 0.5) * 100)));
-    setInstanceParam(_instId, _xKey, x);
-    setInstanceParam(_instId, _yKey, y);
+
+    if (_mode === 'blackBox') {
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const W  = uiOverlay.width, H = uiOverlay.height;
+        if (_handle === 'center') {
+            const x = Math.round(Math.max(-50, Math.min(50,  (mx / W - 0.5) * 100)));
+            const y = Math.round(Math.max(-50, Math.min(50, -(my / H - 0.5) * 100)));
+            setInstanceParam(_instId, 'blackBoxX', x);
+            setInstanceParam(_instId, 'blackBoxY', y);
+        } else if (_handle === 'rot') {
+            // Rotation — angle of mouse relative to box center, offset so 0° = up
+            const p  = inst.params;
+            const cx = (0.5 + p.blackBoxX / 100) * W;
+            const cy = (0.5 - p.blackBoxY / 100) * H;
+            let deg  = Math.atan2(my - cy, mx - cx) * 180 / Math.PI + 90;
+            if (deg > 180)  deg -= 360;
+            if (deg < -180) deg += 360;
+            setInstanceParam(_instId, 'blackBoxAngle', Math.round(deg));
+        } else {
+            // Symmetric resize around center — project mouse onto local box axes
+            const p   = inst.params;
+            const cx  = (0.5 + p.blackBoxX / 100) * W;
+            const cy  = (0.5 - p.blackBoxY / 100) * H;
+            const ang = (p.blackBoxAngle ?? 0) * Math.PI / 180;
+            const cos = Math.cos(ang), sin = Math.sin(ang);
+            const dx  = mx - cx, dy = my - cy;
+            const lx  = dx * cos + dy * sin;
+            const ly  = -dx * sin + dy * cos;
+            setInstanceParam(_instId, 'blackBoxW', Math.round(Math.max(1, Math.min(100, Math.abs(lx) * 2 / W * 100))));
+            setInstanceParam(_instId, 'blackBoxH', Math.round(Math.max(1, Math.min(100, Math.abs(ly) * 2 / H * 100))));
+        }
+    } else {
+        const x = Math.round(Math.max(-50, Math.min(50, ((e.clientX - rect.left) / rect.width  - 0.5) * 100)));
+        const y = Math.round(Math.max(-50, Math.min(50, -((e.clientY - rect.top)  / rect.height - 0.5) * 100)));
+        setInstanceParam(_instId, _xKey, x);
+        setInstanceParam(_instId, _yKey, y);
+    }
     // onStackChange fires → draw() called automatically
 }
 
 function onUp() {
     _dragging = false;
+    _handle   = null;
     uiOverlay.style.cursor = 'default';
     uiOverlay.removeEventListener('pointermove', onDrag);
     uiOverlay.removeEventListener('pointerup',   onUp);
     saveState();
-    // For fade: redraw without the radius circle after release
     const inst = getStack().find(i => i.id === _instId);
     if (!inst) return;
-    if (_mode === 'fade') drawFade(inst.params);
-    if (_mode === 'blur') drawBlur(inst.params);
+    if (_mode === 'fade')     drawFade(inst.params);
+    if (_mode === 'blur')     drawBlur(inst.params);
+    if (_mode === 'blackBox') drawBlackBox(inst.params);
 }

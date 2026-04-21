@@ -1,9 +1,5 @@
 import { secondTexture } from '../renderer/glstate.js';
 
-function applyDoubleExposure(imageData) {
-    return imageData;
-}
-
 export default {
     name: 'doubleExposure',
     label: 'Double Exposure',
@@ -17,7 +13,6 @@ export default {
         doubleExposureReverse:    { default: false },
     },
     enabled: (p) => p.doubleExposureEnabled && !!secondTexture,
-    canvas2d: applyDoubleExposure,
     bindUniforms: (gl, prog, p) => {
         // Channel mode bitmask: r=1, g=2, b=4
         const chanMap = { all: 7, r: 1, g: 2, b: 4, rg: 3, rb: 5, gb: 6 };

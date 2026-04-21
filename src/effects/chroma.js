@@ -1,70 +1,3 @@
-import { params } from '../state/params.js';
-
-let cachedBuffer = null;
-
-function applyChromaticAberration(imageData, p = params) {
-    const width = imageData.width;
-    const height = imageData.height;
-    const sourceData = imageData.data;
-    
-    if (!cachedBuffer || cachedBuffer.length !== sourceData.length) {
-        cachedBuffer = new Uint8ClampedArray(sourceData.length);
-    }
-    const result = cachedBuffer;
-
-    const scale = p.chromaScale ?? 1;
-    const shifts = [
-        { x: p.chromaRedX   * scale, y: p.chromaRedY   * scale, channel: 0 },
-        { x: p.chromaGreenX * scale, y: p.chromaGreenY * scale, channel: 1 },
-        { x: p.chromaBlueX  * scale, y: p.chromaBlueY  * scale, channel: 2 },
-    ];
-
-    const thresh  = 255 * (p.chromaThreshold / 100);
-    const reverse = p.chromaThresholdReverse;
-
-    const fadeAmount = p.chromaFade / 100;
-    const cx = width  * (0.5 + p.chromaFadeX / 100);
-    const cy = height * (0.5 - p.chromaFadeY / 100);
-    const maxDist = Math.sqrt(Math.max(cx, width - cx) ** 2 + Math.max(cy, height - cy) ** 2);
-    const fadeDist = Math.max(1, maxDist * (p.chromaFadeRadius / 100));
-
-    for (const shift of shifts) {
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                const idx = (y * width + x) * 4;
-                const r = sourceData[idx], g = sourceData[idx+1], b = sourceData[idx+2];
-                const lum = 0.299*r + 0.587*g + 0.114*b;
-                const apply = reverse ? (lum <= thresh) : (lum >= thresh);
-                if (!apply) continue;
-
-                const dx = x - cx;
-                const dy = y - cy;
-                const rawDist = Math.sqrt(dx * dx + dy * dy);
-                let weight;
-                if (p.chromaFadeInvert) {
-                    if (rawDist < fadeDist) continue;
-                    const outerRange = maxDist - fadeDist;
-                    const outerT = outerRange > 0 ? Math.min(1, (rawDist - fadeDist) / outerRange) : 1;
-                    weight = 1 - fadeAmount * (1 - outerT);
-                } else {
-                    if (rawDist >= fadeDist) continue;
-                    weight = 1 - fadeAmount * (rawDist / fadeDist);
-                }
-
-                const nx = Math.round(x - shift.x * weight);
-                const ny = Math.round(y + shift.y * weight);
-                if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                    result[idx + shift.channel] =
-                        sourceData[(ny * width + nx) * 4 + shift.channel];
-                }
-            }
-        }
-    }
-
-    imageData.data.set(result);
-    return imageData;
-}
-
 export default {
     name: 'chroma',
     label: 'Chromatic Aberration',
@@ -88,7 +21,6 @@ export default {
         chromaFadeY:            { default: 0,   min: -50, max: 50  },
     },
     enabled: (p) => p.chromaEnabled,
-    canvas2d: applyChromaticAberration,
     glsl: `
 uniform float chromaRedX; uniform float chromaRedY;
 uniform float chromaGreenX; uniform float chromaGreenY;

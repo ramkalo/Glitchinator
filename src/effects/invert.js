@@ -1,31 +1,3 @@
-import { params } from '../state/params.js';
-
-function applyInvert(imageData, p = params) {
-    const data = imageData.data;
-    const mode = p.invertMode;
-    const threshold = 255 * (p.invertIntensity / 100);
-    const reverse = p.invertReverse;
-
-    for (let i = 0; i < data.length; i += 4) {
-        const r = data[i], g = data[i+1], b = data[i+2];
-        const lum = 0.299*r + 0.587*g + 0.114*b;
-        const targetVal = p.invertTarget === 'r' ? r
-                        : p.invertTarget === 'g' ? g
-                        : p.invertTarget === 'b' ? b
-                        : lum; // 'lum' default
-        const shouldInvert = reverse ? (targetVal <= threshold) : (targetVal >= threshold);
-
-        if (shouldInvert) {
-            if      (mode === 'all') { data[i] = 255-r; data[i+1] = 255-g; data[i+2] = 255-b; }
-            else if (mode === 'rc')  { data[i]   = 255-r; }
-            else if (mode === 'gm')  { data[i+1] = 255-g; }
-            else if (mode === 'by')  { data[i+2] = 255-b; }
-            else if (mode === 'bw')  { const l = 255-lum; data[i] = l; data[i+1] = l; data[i+2] = l; }
-        }
-    }
-    return imageData;
-}
-
 export default {
     name: 'invert',
     label: 'Invert',
@@ -39,7 +11,6 @@ export default {
         invertReverse:   { default: false },
     },
     enabled: (p) => p.invertEnabled,
-    canvas2d: applyInvert,
     bindUniforms: (gl, prog, params) => {
         const modeMap   = { all: 0, rc: 1, gm: 2, by: 3, bw: 4 };
         const targetMap = { lum: 0, r: 1, g: 2, b: 3 };

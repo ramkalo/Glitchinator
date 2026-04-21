@@ -1,7 +1,3 @@
-import { params } from '../state/params.js';
-
-let cachedSrcData = null;
-
 function mulberry32(seed) {
     return function() {
         seed |= 0; seed = seed + 0x6D2B79F5 | 0;
@@ -15,9 +11,9 @@ const SOLID_COLORS = {
     r:   [255, 0,   0  ],
     g:   [0,   255, 0  ],
     b:   [0,   0,   255],
-    rg:  [255, 255, 0  ],
-    rb:  [255, 0,   255],
-    gb:  [0,   255, 255],
+    y:  [255, 255, 0  ],
+    m:  [255, 0,   255],
+    c:  [0,   255, 255],
     rgb: [255, 255, 255],
 };
 
@@ -76,12 +72,35 @@ function markChunk(chunkMap, seedIdx, cx, cy, chunkW, chunkH) {
     if (chunkMap[cy * chunkW + cx] === -1) chunkMap[cy * chunkW + cx] = seedIdx;
 }
 
-function fillCircle(chunkMap, seedIdx, cx, cy, radius, chunkW, chunkH) {
-    const r = Math.ceil(radius);
-    const r2 = radius * radius;
+function pointInPolygon(x, y, verts) {
+    let inside = false;
+    for (let i = 0, j = verts.length - 1; i < verts.length; j = i++) {
+        const xi = verts[i][0], yi = verts[i][1];
+        const xj = verts[j][0], yj = verts[j][1];
+        if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi)
+            inside = !inside;
+    }
+    return inside;
+}
+
+function makePolyVerts(N, radius, rotation, rng) {
+    const verts = [];
+    for (let i = 0; i < N; i++) {
+        const angle = (2 * Math.PI * i / N) + rotation;
+        const r     = radius * (0.7 + rng() * 0.6);
+        verts.push([Math.cos(angle) * r, Math.sin(angle) * r]);
+    }
+    return verts;
+}
+
+function fillPolygon(chunkMap, seedIdx, cx, cy, verts, chunkW, chunkH) {
+    let maxR = 0;
+    for (const [vx, vy] of verts) maxR = Math.max(maxR, Math.abs(vx), Math.abs(vy));
+    const r = Math.ceil(maxR);
     for (let dy = -r; dy <= r; dy++) {
         for (let dx = -r; dx <= r; dx++) {
-            if (dx * dx + dy * dy <= r2) markChunk(chunkMap, seedIdx, cx + dx, cy + dy, chunkW, chunkH);
+            if (pointInPolygon(dx, dy, verts))
+                markChunk(chunkMap, seedIdx, cx + dx, cy + dy, chunkW, chunkH);
         }
     }
 }
@@ -90,9 +109,10 @@ function applySplatter(chunkMap, seeds, infectRadius, chunkW, chunkH, rng) {
     for (let s = 0; s < seeds.length; s++) {
         const scx = Math.round(seeds[s].cx);
         const scy = Math.round(seeds[s].cy);
+        const N   = 3 + Math.floor(rng() * 6); // 3–8 sides, consistent per splat
 
         // Central blob
-        fillCircle(chunkMap, s, scx, scy, Math.max(1, infectRadius * 0.15), chunkW, chunkH);
+        fillPolygon(chunkMap, s, scx, scy, makePolyVerts(N, Math.max(1, infectRadius * 0.15), rng() * Math.PI * 2, rng), chunkW, chunkH);
 
         // Splatter arms — random angles, tapered thickness, drip tips
         const numArms = 7 + Math.floor(rng() * 9);
@@ -108,21 +128,21 @@ function applySplatter(chunkMap, seeds, infectRadius, chunkW, chunkH, rng) {
                 const wiggle = (rng() - 0.5) * 1.2;
                 const wx     = scx + Math.cos(angle) * step + Math.cos(perpA) * wiggle;
                 const wy     = scy + Math.sin(angle) * step + Math.sin(perpA) * wiggle;
-                fillCircle(chunkMap, s, Math.round(wx), Math.round(wy), radius, chunkW, chunkH);
+                fillPolygon(chunkMap, s, Math.round(wx), Math.round(wy), makePolyVerts(N, radius, rng() * Math.PI * 2, rng), chunkW, chunkH);
             }
 
             // Random drips at arm tip
-            const tipX    = Math.round(scx + Math.cos(angle) * armLen);
-            const tipY    = Math.round(scy + Math.sin(angle) * armLen);
+            const tipX     = Math.round(scx + Math.cos(angle) * armLen);
+            const tipY     = Math.round(scy + Math.sin(angle) * armLen);
             const numDrips = Math.floor(rng() * 3);
             for (let d = 0; d < numDrips; d++) {
                 const dripA   = angle + (rng() - 0.5) * 1.8;
                 const dripLen = 1 + Math.floor(rng() * 4);
                 for (let dl = 1; dl <= dripLen; dl++) {
-                    fillCircle(chunkMap, s,
+                    fillPolygon(chunkMap, s,
                         Math.round(tipX + Math.cos(dripA) * dl),
                         Math.round(tipY + Math.sin(dripA) * dl),
-                        0.8, chunkW, chunkH);
+                        makePolyVerts(N, 0.8, rng() * Math.PI * 2, rng), chunkW, chunkH);
                 }
             }
         }
@@ -190,17 +210,22 @@ function applyPath(chunkMap, pathLength, chunkW, chunkH, centerX, centerY, clust
     }
 }
 
-function sampleFromRegion(region, chunkSize, width, height, srcData, corruptedChunks, boundaryChunks, rng) {
+function sampleFromRegion(region, chunkSize, width, height, srcData, corruptedChunks, boundaryChunks, rng, cx, cy) {
     let px, py;
     if (region === 'perimeter') {
-        const list = boundaryChunks.length > 0 ? boundaryChunks : corruptedChunks;
-        const bc = list[Math.floor(rng() * list.length)];
-        px = Math.min(width  - 1, Math.floor(bc.cx * chunkSize + rng() * chunkSize));
-        py = Math.min(height - 1, Math.floor(bc.cy * chunkSize + rng() * chunkSize));
+    const startX = cx * chunkSize;
+    const startY = cy * chunkSize;
+    const side = Math.floor(rng() * 4);
+    if      (side === 0) { px = startX; py = startY + rng() * chunkSize; }
+    else if (side === 1) { px = startX + chunkSize - 1; py = startY + rng() * chunkSize; }
+    else if (side === 2) { px = startX + rng() * chunkSize; py = startY; }
+    else                 { px = startX + rng() * chunkSize; py = startY + chunkSize - 1; }
+
     } else if (region === 'inside') {
-        const ic = corruptedChunks[Math.floor(rng() * corruptedChunks.length)];
-        px = Math.min(width  - 1, Math.floor(ic.cx * chunkSize + rng() * chunkSize));
-        py = Math.min(height - 1, Math.floor(ic.cy * chunkSize + rng() * chunkSize));
+    const startX = cx * chunkSize;
+    const startY = cy * chunkSize;
+    px = Math.min(width  - 1, Math.floor(startX + rng() * chunkSize));
+    py = Math.min(height - 1, Math.floor(startY + rng() * chunkSize));
     } else if (region === 'border') {
         const side = Math.floor(rng() * 4);
         if      (side === 0) { px = Math.floor(rng() * width);  py = Math.floor(rng() * Math.min(10, height)); }
@@ -222,121 +247,6 @@ function sampleFromRegion(region, chunkSize, width, height, srcData, corruptedCh
     return [srcData[i], srcData[i + 1], srcData[i + 2]];
 }
 
-function applyCorrupted(imageData, p = params) {
-    const { width, height } = imageData;
-    const data    = imageData.data;
-    
-    if (!cachedSrcData || cachedSrcData.length !== data.length) {
-        cachedSrcData = new Uint8ClampedArray(data.length);
-    }
-    const srcData = cachedSrcData;
-    srcData.set(data);
-    
-    const rng     = mulberry32(p.corruptedSeed);
-
-    const chunkSize = Math.max(1, p.corruptedChunkSize);
-    const chunkW    = Math.ceil(width  / chunkSize);
-    const chunkH    = Math.ceil(height / chunkSize);
-    const chunkMap  = new Int16Array(chunkW * chunkH).fill(-1);
-
-    const centerX    = (0.5 + p.corruptedX / 100) * width;
-    const centerY    = (0.5 - p.corruptedY / 100) * height;
-    const clusterR   = p.corruptedCluster / 100 * Math.min(width, height) * 10;
-    const infectRadius = p.corruptedInfect / 100 * Math.max(chunkW, chunkH) * 0.5;
-
-    const seeds = generateSeeds(p.corruptedSeeds, centerX, centerY, clusterR, chunkSize, rng);
-
-    const pathLength = Math.round((p.corruptedInfect / 100) * chunkW * chunkH);
-
-    const pattern = p.corruptedPattern ?? 'splat';
-    if      (pattern === 'splat')        applySplatter(chunkMap, seeds, infectRadius, chunkW, chunkH, rng);
-    else if (pattern === 'rubble')       applyChains(chunkMap, seeds, infectRadius, chunkW, chunkH, rng);
-    else if (pattern === 'detonation')   { applyChains(chunkMap, seeds, infectRadius, chunkW, chunkH, rng);    applySplatter(chunkMap, seeds, infectRadius, chunkW, chunkH, rng); }
-    else if (pattern === 'outbreak')     { applyBranching(chunkMap, seeds, infectRadius, chunkW, chunkH, rng); applySplatter(chunkMap, seeds, infectRadius, chunkW, chunkH, rng); }
-    else if (pattern === 'overgrowth')   { applyChains(chunkMap, seeds, infectRadius, chunkW, chunkH, rng);    applyBranching(chunkMap, seeds, infectRadius, chunkW, chunkH, rng); }
-    else if (pattern === 'worm')         applyPath(chunkMap, pathLength, chunkW, chunkH, centerX, centerY, clusterR, chunkSize, 1, rng);
-    else if (pattern === '3-worms')      applyPath(chunkMap, pathLength, chunkW, chunkH, centerX, centerY, clusterR, chunkSize, 3, rng);
-    else if (pattern === '6-worms')      applyPath(chunkMap, pathLength, chunkW, chunkH, centerX, centerY, clusterR, chunkSize, 6, rng);
-    else if (pattern === '9-worms')      applyPath(chunkMap, pathLength, chunkW, chunkH, centerX, centerY, clusterR, chunkSize, 9, rng);
-    else                                 applySplatter(chunkMap, seeds, infectRadius, chunkW, chunkH, rng);
-
-    const colorOption = p.corruptedColor     ?? 'r';
-    const colorMode   = p.corruptedColorMode ?? 'per-chunk';
-    const solidColor  = SOLID_COLORS[colorOption];
-    const isDynamic   = !solidColor && colorOption !== 'static';
-
-    let corruptedChunks = [];
-    let boundaryChunks  = [];
-    if (isDynamic) {
-        for (let ci = 0; ci < chunkW * chunkH; ci++) {
-            if (chunkMap[ci] === -1) continue;
-            const cx = ci % chunkW;
-            const cy = Math.floor(ci / chunkW);
-            corruptedChunks.push({ cx, cy });
-            const isEdge =
-                cx === 0 || cx === chunkW - 1 || cy === 0 || cy === chunkH - 1 ||
-                (cx > 0           && chunkMap[ci - 1]      === -1) ||
-                (cx < chunkW - 1  && chunkMap[ci + 1]      === -1) ||
-                (cy > 0           && chunkMap[ci - chunkW] === -1) ||
-                (cy < chunkH - 1  && chunkMap[ci + chunkW] === -1);
-            if (isEdge) boundaryChunks.push({ cx, cy });
-        }
-    }
-
-    let zoneColors = null;
-    if (isDynamic && colorMode === 'per-zone' && corruptedChunks.length > 0) {
-        zoneColors = [];
-        for (let s = 0; s < p.corruptedSeeds; s++) {
-            zoneColors.push(sampleFromRegion(colorOption, chunkSize, width, height, srcData, corruptedChunks, boundaryChunks, rng));
-        }
-    }
-
-    for (let ci = 0; ci < chunkW * chunkH; ci++) {
-        const seedIdx = chunkMap[ci];
-        if (seedIdx === -1) continue;
-
-        const cx = ci % chunkW;
-        const cy = Math.floor(ci / chunkW);
-
-        let fr = 0, fg = 0, fb = 0;
-        const isStatic = colorOption === 'static';
-
-        if (!isStatic) {
-            if (solidColor) {
-                [fr, fg, fb] = solidColor;
-            } else if (colorMode === 'per-zone' && zoneColors) {
-                [fr, fg, fb] = zoneColors[seedIdx];
-            } else if (corruptedChunks.length > 0) {
-                [fr, fg, fb] = sampleFromRegion(colorOption, chunkSize, width, height, srcData, corruptedChunks, boundaryChunks, rng);
-            }
-        }
-
-        const startX = cx * chunkSize;
-        const startY = cy * chunkSize;
-        const endX   = Math.min(startX + chunkSize, width);
-        const endY   = Math.min(startY + chunkSize, height);
-
-        for (let py = startY; py < endY; py++) {
-            for (let px = startX; px < endX; px++) {
-                const di = (py * width + px) * 4;
-                if (isStatic) {
-                    const v = Math.floor(Math.random() * 256);
-                    data[di]     = v;
-                    data[di + 1] = v;
-                    data[di + 2] = v;
-                } else {
-                    data[di]     = fr;
-                    data[di + 1] = fg;
-                    data[di + 2] = fb;
-                }
-                data[di + 3] = 255;
-            }
-        }
-    }
-
-    return imageData;
-}
-
 export default {
     name:  'corrupted',
     label: 'Corrupted',
@@ -356,14 +266,13 @@ export default {
         corruptedY:         { default: 0,   min: -50, max: 50    },
     },
     enabled:  (p) => p.corruptedEnabled,
-    canvas2d: applyCorrupted,
     bindUniforms: corruptedBindUniforms,
     glsl: `
 uniform sampler2D uChunkTex;
 uniform sampler2D uColorTex;
 uniform float corruptedChunkSize;
-uniform float corruptedSeeds;
 uniform int   corruptedIsStatic;
+uniform int   corruptedIsGlitched;
 
 float hash21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 
@@ -384,13 +293,27 @@ void main() {
     if (zone < 0) { fragColor = texture(uTex, vUV); return; }
 
     if (corruptedIsStatic == 1) {
-        float n = hash21(vec2(px, py));
+        float n = hash21(vec2(cx, cy));
         fragColor = vec4(n, n, n, 1.0);
         return;
     }
 
-    float colorU = (float(zone) + 0.5) / corruptedSeeds;
-    fragColor = vec4(texture(uColorTex, vec2(colorU, 0.5)).rgb, 1.0);
+    if (corruptedIsStatic == 2) {
+        float r = hash21(vec2(cx,        cy       ));
+        float g = hash21(vec2(cy + 47.0, cx + 23.0));
+        float b = hash21(vec2(cx + 83.0, cy + 61.0));
+        fragColor = vec4(r, g, b, 1.0);
+        return;
+    }
+
+    if (corruptedIsGlitched == 1) {
+        vec2 encoded = texture(uColorTex, vec2(u, v)).rg;
+        vec2 offset  = encoded * 2.0 - 1.0;
+        fragColor = vec4(texture(uTex, fract(vUV + offset)).rgb, 1.0);
+        return;
+    }
+
+    fragColor = vec4(texture(uColorTex, vec2(u, v)).rgb, 1.0);
 }
 `,
 };
@@ -434,18 +357,35 @@ function buildChunkMapGPU(p, imgW, imgH) {
     else if (pat === 'overgrowth') { applyChains(chunkMap, seeds, infectRadius, chunkW, chunkH, rng); applyBranching(chunkMap, seeds, infectRadius, chunkW, chunkH, rng); }
     else if (pat === 'worm')       applyPath(chunkMap, pathLength, chunkW, chunkH, centerX, centerY, clusterR, chunkSize, 1, rng);
     else if (pat === '3-worms')    applyPath(chunkMap, pathLength, chunkW, chunkH, centerX, centerY, clusterR, chunkSize, 3, rng);
-    else if (pat === '6-worms')    applyPath(chunkMap, pathLength, chunkW, chunkH, centerX, centerY, clusterR, chunkSize, 6, rng);
-    else if (pat === '9-worms')    applyPath(chunkMap, pathLength, chunkW, chunkH, centerX, centerY, clusterR, chunkSize, 9, rng);
+
     else                           applySplatter(chunkMap, seeds, infectRadius, chunkW, chunkH, rng);
     return { chunkMap, seeds, chunkW, chunkH };
 }
 
-function computeZoneColorsGPU(p, chunkMap, seeds, chunkW, chunkH, srcData, imgW, imgH) {
-    const numZones = p.corruptedSeeds;
-    const result   = new Uint8Array(numZones * 4);
+function computeColorTexGPU(p, chunkMap, seeds, chunkW, chunkH, srcData, imgW, imgH) {
+    const result     = new Uint8Array(chunkW * chunkH * 4);
+    const isGlitched = (p.corruptedColorMode ?? 'per-chunk') === 'glitched';
     const solidColor = SOLID_COLORS[p.corruptedColor];
-    const isDynamic  = !solidColor && p.corruptedColor !== 'static';
-    const colorMode  = p.corruptedColorMode ?? 'per-chunk';
+    const isDynamic  = !solidColor && p.corruptedColor !== 'static' && p.corruptedColor !== 'color-static';
+    const isPerChunk = !isGlitched && (p.corruptedColorMode ?? 'per-chunk') === 'per-chunk';
+
+    if (isGlitched) {
+        const rng = mulberry32(p.corruptedSeed + 77777);
+        const zoneOffsets = [];
+        for (let z = 0; z < p.corruptedSeeds; z++) {
+            zoneOffsets.push([rng(), rng()]); // [0,1] range — decoded to [-1,1] in shader
+        }
+        for (let ci = 0; ci < chunkW * chunkH; ci++) {
+            const zone = chunkMap[ci];
+            if (zone === -1) continue;
+            const [ou, ov] = zoneOffsets[zone];
+            result[ci * 4]     = Math.round(ou * 255);
+            result[ci * 4 + 1] = Math.round(ov * 255);
+            result[ci * 4 + 2] = 0;
+            result[ci * 4 + 3] = 255;
+        }
+        return result;
+    }
 
     let corruptedChunks = [], boundaryChunks = [];
     if (isDynamic) {
@@ -460,20 +400,38 @@ function computeZoneColorsGPU(p, chunkMap, seeds, chunkW, chunkH, srcData, imgW,
         }
     }
 
-    const rng = mulberry32(p.corruptedSeed + 99999); // separate rng for colors
-    for (let z = 0; z < numZones; z++) {
+    // Pre-compute per-zone colors for per-zone mode
+    let zoneColors = null;
+    if (isDynamic && !isPerChunk && srcData && corruptedChunks.length > 0) {
+        const rng = mulberry32(p.corruptedSeed + 99999);
+        zoneColors = [];
+        for (let z = 0; z < p.corruptedSeeds; z++) {
+            zoneColors.push(sampleFromRegion(p.corruptedColor, Math.max(1, p.corruptedChunkSize), imgW, imgH, srcData, corruptedChunks, boundaryChunks, rng, seeds[z].cx, seeds[z].cy));
+        }
+    }
+
+    const rng = mulberry32(p.corruptedSeed + 99999);
+    for (let ci = 0; ci < chunkW * chunkH; ci++) {
+        const zone = chunkMap[ci];
+        if (zone === -1) continue;
+
+        const cx = ci % chunkW, cy = Math.floor(ci / chunkW);
         let r, g, b;
+
         if (solidColor) {
             [r, g, b] = solidColor;
-        } else if (isDynamic && corruptedChunks.length > 0 && srcData) {
-            [r, g, b] = sampleFromRegion(p.corruptedColor, Math.max(1, p.corruptedChunkSize), imgW, imgH, srcData, corruptedChunks, boundaryChunks, rng);
+        } else if (isDynamic && isPerChunk && srcData && corruptedChunks.length > 0) {
+            [r, g, b] = sampleFromRegion(p.corruptedColor, Math.max(1, p.corruptedChunkSize), imgW, imgH, srcData, corruptedChunks, boundaryChunks, rng, cx, cy);
+        } else if (isDynamic && !isPerChunk && zoneColors) {
+            [r, g, b] = zoneColors[zone];
         } else {
-            r = g = b = 128; // fallback for static (not used) or no srcData
+            r = g = b = 128;
         }
-        result[z * 4]     = r;
-        result[z * 4 + 1] = g;
-        result[z * 4 + 2] = b;
-        result[z * 4 + 3] = 255;
+
+        result[ci * 4]     = r;
+        result[ci * 4 + 1] = g;
+        result[ci * 4 + 2] = b;
+        result[ci * 4 + 3] = 255;
     }
     return result;
 }
@@ -486,11 +444,12 @@ function corruptedBindUniforms(gl, prog, p, dstW, dstH, srcTex) {
         if (_gpuCache.chunkTex) { gl.deleteTexture(_gpuCache.chunkTex); _gpuCache.chunkTex = null; }
         if (_gpuCache.colorTex) { gl.deleteTexture(_gpuCache.colorTex); _gpuCache.colorTex = null; }
 
-        // Readback source pixels for dynamic color modes
+        // Readback source pixels for dynamic color modes (skipped in glitched mode)
         let srcData = null;
         const solidColor = SOLID_COLORS[p.corruptedColor];
-        const isDynamic  = !solidColor && p.corruptedColor !== 'static';
-        if (isDynamic && srcTex) {
+        const isDynamic  = !solidColor && p.corruptedColor !== 'static' && p.corruptedColor !== 'color-static';
+        const isGlitched = (p.corruptedColorMode ?? 'per-chunk') === 'glitched';
+        if (isDynamic && !isGlitched && srcTex) {
             const readFbo = gl.createFramebuffer();
             gl.bindFramebuffer(gl.READ_FRAMEBUFFER, readFbo);
             gl.framebufferTexture2D(gl.READ_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, srcTex, 0);
@@ -502,7 +461,7 @@ function corruptedBindUniforms(gl, prog, p, dstW, dstH, srcTex) {
         }
 
         const { chunkMap, seeds, chunkW, chunkH } = buildChunkMapGPU(p, dstW, dstH);
-        const zoneColors = computeZoneColorsGPU(p, chunkMap, seeds, chunkW, chunkH, srcData, dstW, dstH);
+        const chunkColors = computeColorTexGPU(p, chunkMap, seeds, chunkW, chunkH, srcData, dstW, dstH);
 
         // Upload chunkMap texture (R channel: zoneIndex+1, 0=unaffected)
         const chunkData = new Uint8Array(chunkW * chunkH * 4);
@@ -520,12 +479,11 @@ function corruptedBindUniforms(gl, prog, p, dstW, dstH, srcTex) {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
-        // Upload zone colors texture (1 × numZones strip)
-        const numZones = p.corruptedSeeds;
+        // Upload per-chunk color texture (chunkW × chunkH)
         gl.activeTexture(gl.TEXTURE2);
         const colorTex = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, colorTex);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, numZones, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, zoneColors);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, chunkW, chunkH, 0, gl.RGBA, gl.UNSIGNED_BYTE, chunkColors);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -540,7 +498,9 @@ function corruptedBindUniforms(gl, prog, p, dstW, dstH, srcTex) {
     const chunkLoc = prog._locs['uChunkTex'];
     const colorLoc = prog._locs['uColorTex'];
     const statLoc  = prog._locs['corruptedIsStatic'];
+    const glitLoc  = prog._locs['corruptedIsGlitched'];
     if (chunkLoc != null) { gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, _gpuCache.chunkTex); gl.uniform1i(chunkLoc, 1); }
     if (colorLoc != null) { gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, _gpuCache.colorTex); gl.uniform1i(colorLoc, 2); }
-    if (statLoc  != null) { gl.uniform1i(statLoc, p.corruptedColor === 'static' ? 1 : 0); }
+    if (statLoc  != null) { gl.uniform1i(statLoc, p.corruptedColor === 'static' ? 1 : p.corruptedColor === 'color-static' ? 2 : 0); }
+    if (glitLoc  != null) { gl.uniform1i(glitLoc, (p.corruptedColorMode ?? 'per-chunk') === 'glitched' ? 1 : 0); }
 }
