@@ -21,11 +21,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
 
       // Files from public/ to include in the service worker precache
-      includeAssets: ['favicon.ico', 'vikritinator-icon.svg', 'apple-touch-icon-180x180.png', '*.png'],
+      includeAssets: ['favicon.ico', 'bxtrxt-icon.svg', 'apple-touch-icon-180x180.png', '*.png'],
 
       manifest: {
-        name: 'Vikritinator',
-        short_name: 'Vikritinator',
+        name: 'BXTRXT',
+        short_name: 'BXTRXT',
         description: 'Retro photo effects editor — grain, VHS, CRT, and more.',
         theme_color: '#0a0a1a',
         background_color: '#0a0a1a',

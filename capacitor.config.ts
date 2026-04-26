@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.vikritinator.app',
-  appName: 'Vikritinator',
+  appId: 'com.bxtrxt.app',
+  appName: 'BXTRXT',
 
   // Vite's build output — where Capacitor copies the web app from
   webDir: 'dist',

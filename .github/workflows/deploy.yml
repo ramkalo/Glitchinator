@@ -37,10 +37,10 @@ jobs:
         run: npm ci
 
       - name: Build
-        # VITE_BASE must match your repo name, e.g. /vikritinator/
+        # VITE_BASE must match your repo name, e.g. /bxtrxt/
         # If you have a custom domain pointed at this repo, set it to /
         env:
-          VITE_BASE: /vikritinator/
+          VITE_BASE: /bxtrxt/
         run: npm run build
 
       - name: Upload Pages artifact

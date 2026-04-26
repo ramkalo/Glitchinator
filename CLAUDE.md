@@ -1,4 +1,4 @@
-# Vikritinator
+# BXTRXT
 
 Browser-based image editor with retro VFX effects.
 

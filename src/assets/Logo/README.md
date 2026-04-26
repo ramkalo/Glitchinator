@@ -1,9 +1,9 @@
-# Vikritinator Logos
+# BXTRXT Logos
 
 Drop logo images into this folder to add them to the pool.
 
 ## Naming convention
-`VikritinatorLogo-XXXXXXX.ext` — 7-digit zero-padded number, e.g. `VikritinatorLogo-0000001.jpg`
+`BXTRXTLogo-XXXXXXX.ext` — 7-digit zero-padded number, e.g. `BXTRXTLogo-0000001.jpg`
 
 ## Supported formats
 JPG only. Images should be **480×100px**.

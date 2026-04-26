@@ -9,5 +9,5 @@ export default defineConfig({
     // Output directory relative to the image source
     // icons land in public/icons/
   },
-  images: ['public/vikritinator-icon.svg'],
+  images: ['public/bxtrxt-icon.svg'],
 })

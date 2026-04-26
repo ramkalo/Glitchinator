@@ -43,7 +43,7 @@ export function downloadPreset(name) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `vikritinator-preset-${name}.json`;
+    link.download = `bxtrxt-preset-${name}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
