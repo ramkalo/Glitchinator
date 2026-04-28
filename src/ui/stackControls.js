@@ -123,7 +123,7 @@ const PARAM_OPTIONS = {
     chromaFadeShape:        [['ellipse', 'Ellipse'], ['rectangle', 'Rectangle']],
     chromaThresholdTarget:  [['lum', 'Luminance'], ['r', 'Red'], ['g', 'Green'], ['b', 'Blue']],
     invertColorA: [
-        ['bk', 'Black'],
+        ['all', 'All Colors'],
         ['r',  'Red'],
         ['g',  'Green'],
         ['b',  'Blue'],
@@ -131,15 +131,16 @@ const PARAM_OPTIONS = {
         ['y',  'Yellow'],
         ['m',  'Magenta'],
         ['w',  'White'],
+        ['bk', 'Black'],
     ],
     invertColorB: [
-        ['w',  'White'],
         ['r',  'Red'],
         ['g',  'Green'],
         ['b',  'Blue'],
         ['c',  'Cyan'],
         ['y',  'Yellow'],
         ['m',  'Magenta'],
+        ['w',  'White'],
         ['bk', 'Black'],
     ],
     invertTarget: [['lum', 'Luminance'], ['r', 'Red'], ['g', 'Green'], ['b', 'Blue']],
@@ -312,7 +313,8 @@ export function buildEffectBody(inst, onRebuild) {
         const swapRow = document.createElement('div');
         swapRow.className = 'control-group';
         swapRow.innerHTML = `<div class="control-row"><button class="btn">⇄ Swap Colors</button></div>`;
-        swapRow.querySelector('button').addEventListener('click', () => {
+        const swapBtn = swapRow.querySelector('button');
+        swapBtn.addEventListener('click', () => {
             saveState();
             const a = inst.params.invertColorA;
             const b = inst.params.invertColorB;
@@ -324,6 +326,19 @@ export function buildEffectBody(inst, onRebuild) {
         const colorAGroup = colorASelect?.closest('.control-group');
         if (colorAGroup) colorAGroup.after(swapRow);
         else content.appendChild(swapRow);
+
+        const colorBSelect = content.querySelector('[data-inst-param="invertColorB"]');
+        const colorBGroup  = colorBSelect?.closest('.control-group');
+
+        function syncAllColorsState() {
+            const isAll = colorASelect?.value === 'all';
+            if (colorBSelect) colorBSelect.disabled = isAll;
+            if (colorBGroup)  colorBGroup.style.opacity = isAll ? '0.4' : '';
+            swapBtn.disabled = isAll;
+        }
+
+        colorASelect?.addEventListener('change', syncAllColorsState);
+        syncAllColorsState();
     }
 
     return content;
