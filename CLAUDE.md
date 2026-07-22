@@ -10,6 +10,14 @@ npm run build    # Build for production
 npm run preview # Preview production build
 ```
 
+## Working Rules
+
+- Never start a dev/preview/test server (`npm run dev`, `npm run preview`, vite) — the user runs
+  the app themselves.
+- Never try to visually confirm changes in a browser. Verification is `npm run build` plus written
+  manual test steps for the user.
+- Never commit, create branches, or create worktrees. Leave changes in the working tree.
+
 ## Key Files
 
 - `src/main.js` — Entry point

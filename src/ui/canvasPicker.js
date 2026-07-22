@@ -26,7 +26,7 @@ import { drawDrawTool, hitTestDrawTool, onDragDrawTool, finalizeDrawToolStroke, 
 import { drawMeshOverlay, hitTestMesh, onDragMesh } from './overlays/meshOverlay.js';
 import { drawTunnelOverlay, hitTestTunnel, onDragTunnel } from './overlays/tunnelOverlay.js';
 import { drawFilmSoup, hitTestFilmSoup, onDragFilmSoup, addFilmSoupBubble, deleteFilmSoupBubble, canAddFilmSoupBubble } from './overlays/filmSoupOverlay.js';
-import { drawColorGel, hitTestColorGel, onDragColorGel } from './overlays/colorGelOverlay.js';
+import { drawColorGel, hitTestColorGel, onDragColorGel, gelRotAnchor, gelCenterAnchor } from './overlays/colorGelOverlay.js';
 import { drawResin, hitTestResin, onDragResin } from './overlays/resinOverlay.js';
 import { drawGlassBlob, hitTestGlassBlob, onDragGlassBlob } from './overlays/glassBlobOverlay.js';
 import { drawCut, hitTestCut, onDragCut, resetCutVertices } from './overlays/cutOverlay.js';
@@ -569,6 +569,7 @@ function getCursorForMode(mode, h) {
         }
         case 'colorGel':
             return (h && h.startsWith('line')) ? 'grab'
+                : h === 'center' ? 'grab'
                 : h === 'gradRot' ? 'crosshair'
                 : h === 'fadeCenter' ? 'grab'
                 : h === 'fadeRot' ? 'crosshair'
@@ -807,8 +808,24 @@ function onDown(e) {
         }
     }
 
-    // Special dragAnchor setup for text center/rot/edge drags
+    // Color Gel: rotating captures the cursor's start angle so grabbing doesn't
+    // snap the gradient to the cursor, and the origin hub keeps its grab offset.
+    // The radial sweep's marker line rotates, so it needs the angle anchor too.
+    if (state.mode === 'colorGel' && (h === 'gradRot' || h === 'center' || h === 'line')) {
+        const rect2 = canvas.getBoundingClientRect();
+        const inst2 = getStack().find(i => i.id === state.instId);
+        const p2    = inst2?.params ?? {};
+        const mx2   = e.clientX - rect2.left, my2 = e.clientY - rect2.top;
+        const W2    = uiOverlay.width, H2 = uiOverlay.height;
+        state.dragAnchor = (h === 'center')
+            ? gelCenterAnchor(p2, mx2, my2, W2, H2)
+            : gelRotAnchor(p2, mx2, my2, W2, H2);
+    }
+
+    // Special dragAnchor setup for text box drags. Corners need it too: with
+    // Lock Angles on they resize against the corner positions at drag start.
     if (state.mode === 'text' && (h === 'center' || h === 'rot'
+        || h === 'tl' || h === 'tr' || h === 'br' || h === 'bl'
         || h === 'topEdge' || h === 'rightEdge' || h === 'bottomEdge' || h === 'leftEdge')) {
         const rect2 = canvas.getBoundingClientRect();
         const inst2 = getStack().find(i => i.id === state.instId);

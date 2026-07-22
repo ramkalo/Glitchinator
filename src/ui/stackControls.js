@@ -8,6 +8,19 @@ import { toggleBlendMapOverlay, hideBlendMapOverlay } from './canvasPicker.js';
 import { performCut, addPaste, clearCut } from './cutTool.js';
 import { buildPaletteSwatchControl, resolveColorKey, getActivePaletteFor } from './controls/paletteColor.js';
 import { buildHueGridControl } from './controls/hueGrid.js';
+import { buildStopSlider } from './controls/stopSlider.js';
+import { GEL_STOPS, gelMode } from '../effects/colorGel.js';
+import { rightAngleCorners } from './overlays/textBoxGeometry.js';
+
+// First few characters of an effect's content, shown dimmed after its stack-list
+// label so several instances of the same effect can be told apart at a glance.
+export const LABEL_PREVIEW_CHARS = 10;
+
+export function labelPreviewText(effect, params) {
+    const raw = effect?.labelPreview?.(params);
+    if (typeof raw !== 'string') return '';
+    return raw.trim().replace(/\s+/g, ' ').slice(0, LABEL_PREVIEW_CHARS);
+}
 
 let activeSliderGroup = null;
 let _paletteDragSrc = null; // { instId, index } while a palette swatch is being dragged
@@ -588,149 +601,31 @@ export function buildEffectBody(inst, onRebuild) {
             .map(k => content.querySelector(`.control-group[data-inst-param="${k}"]`));
         const refreshStrips = () => { for (const g of colorGroups) g?._refreshSwatches?.(); };
 
-        const contrastColor = (hex) => {
-            const r = parseInt(hex.slice(1,3),16);
-            const g = parseInt(hex.slice(3,5),16);
-            const b = parseInt(hex.slice(5,7),16);
-            return (0.299*r + 0.587*g + 0.114*b) > 128 ? '#000000' : '#ffffff';
-        };
         const resolveInvertHex = (key) => resolveColorKey(key, getActivePaletteFor(inst.id));
 
         if (mode !== 'simple') {
 
             // --- stop-positions slider ---
-            const STOP_DEFS = [
-                { posKey: 'invertPosA', colorKey: 'invertColorA', label: '1', defaultPos: 0    },
-                { posKey: 'invertPosC', colorKey: 'invertColorC', label: '2', defaultPos: 0.25 },
-                { posKey: 'invertPosD', colorKey: 'invertColorD', label: '3', defaultPos: 0.5  },
-                { posKey: 'invertPosE', colorKey: 'invertColorE', label: '4', defaultPos: 0.75 },
-                { posKey: 'invertPosB', colorKey: 'invertColorB', label: '5', defaultPos: 1    },
-            ];
-            const getStopPos   = (i) => inst.params[STOP_DEFS[i].posKey] ?? STOP_DEFS[i].defaultPos;
-            const isStopActive = (i) => i === 0 || i === 4 || inst.params[STOP_DEFS[i].colorKey] !== 'none';
-
-            const sliderGroup = document.createElement('div');
-            sliderGroup.className = 'control-group';
-            const sliderRow = document.createElement('div');
-            sliderRow.className = 'control-row';
-            sliderRow.style.cssText = 'flex-direction:column;align-items:stretch;gap:2px;';
-
-            const sliderLabel = document.createElement('span');
-            sliderLabel.className = 'control-label';
-            sliderLabel.textContent = 'Stop Positions';
-
-            const trackWrap = document.createElement('div');
-            trackWrap.style.cssText = 'position:relative;height:20px;margin:4px 6px;';
-
-            const trackBg = document.createElement('div');
-            trackBg.style.cssText = 'position:absolute;inset:0;border-radius:4px;border:1px solid var(--border);pointer-events:none;';
-            trackWrap.appendChild(trackBg);
-
-            const handles = STOP_DEFS.map((def, i) => {
-                const h = document.createElement('div');
-                h.style.cssText = 'position:absolute;top:-2px;width:12px;height:24px;transform:translateX(-50%);border-radius:3px;border:2px solid rgba(255,255,255,0.5);cursor:ew-resize;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;user-select:none;box-sizing:border-box;';
-                h.textContent = def.label;
-                trackWrap.appendChild(h);
-                return h;
+            const sliderGroup = buildStopSlider(inst, {
+                label: 'Stop Positions',
+                stops: [
+                    { posKey: 'invertPosA', colorKey: 'invertColorA', label: '1', defaultPos: 0    },
+                    { posKey: 'invertPosC', colorKey: 'invertColorC', label: '2', defaultPos: 0.25 },
+                    { posKey: 'invertPosD', colorKey: 'invertColorD', label: '3', defaultPos: 0.5  },
+                    { posKey: 'invertPosE', colorKey: 'invertColorE', label: '4', defaultPos: 0.75 },
+                    { posKey: 'invertPosB', colorKey: 'invertColorB', label: '5', defaultPos: 1    },
+                ],
+                alwaysActive: [0, 4],
+                resolveHex: resolveInvertHex,
+                trackBar: mode === 'hue'
+                    ? 'linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)'
+                    : 'linear-gradient(to right, #000, #fff)',
+                // The slider swaps color params mid-drag; re-sync the swatch strips.
+                onSwap: refreshStrips,
             });
-
-            const updateSlider = () => {
-                const gradParts = [];
-                for (let i = 0; i < 5; i++) {
-                    if (!isStopActive(i)) continue;
-                    const hex = resolveInvertHex(inst.params[STOP_DEFS[i].colorKey]) ?? '#808080';
-                    gradParts.push(`${hex} ${(getStopPos(i) * 100).toFixed(1)}%`);
-                }
-                trackBg.style.background = gradParts.length > 1
-                    ? `linear-gradient(to right, ${gradParts.join(', ')})`
-                    : 'var(--bg-2)';
-
-                for (let i = 0; i < 5; i++) {
-                    const active = isStopActive(i);
-                    handles[i].style.display = active ? 'flex' : 'none';
-                    if (!active) continue;
-                    handles[i].style.left = `${getStopPos(i) * 100}%`;
-                    const hex = resolveInvertHex(inst.params[STOP_DEFS[i].colorKey]) ?? '#808080';
-                    const fg  = contrastColor(hex);
-                    handles[i].style.backgroundColor = hex;
-                    handles[i].style.color = fg;
-                    handles[i].style.borderColor = fg === '#000000' ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.5)';
-                }
-            };
-
-            // drag-past swap: shared drag state so color identity follows the cursor across handles
-            const dragState = { active: false, idx: -1 };
-
-            for (let i = 0; i < 5; i++) {
-                handles[i].addEventListener('pointerdown', (e) => {
-                    if (!isStopActive(i)) return;
-                    e.preventDefault();
-                    handles[i].setPointerCapture(e.pointerId);
-                    saveState();
-                    dragState.active = true;
-                    dragState.idx = i;
-                });
-                handles[i].addEventListener('pointermove', (e) => {
-                    if (!dragState.active) return;
-                    const rect = trackWrap.getBoundingClientRect();
-                    const newPos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-
-                    // swap colors when crossing an adjacent active stop; loop handles fast drags
-                    let swapped = true;
-                    while (swapped) {
-                        swapped = false;
-                        const di = dragState.idx;
-                        for (let j = di + 1; j < 5; j++) {
-                            if (!isStopActive(j)) continue;
-                            if (newPos >= getStopPos(j)) {
-                                const ca = inst.params[STOP_DEFS[di].colorKey];
-                                const cb = inst.params[STOP_DEFS[j].colorKey];
-                                setInstanceParam(inst.id, STOP_DEFS[di].colorKey, cb);
-                                setInstanceParam(inst.id, STOP_DEFS[j].colorKey, ca);
-                                dragState.idx = j;
-                                swapped = true;
-                            }
-                            break;
-                        }
-                        const di2 = dragState.idx;
-                        for (let j = di2 - 1; j >= 0; j--) {
-                            if (!isStopActive(j)) continue;
-                            if (newPos <= getStopPos(j)) {
-                                const ca = inst.params[STOP_DEFS[di2].colorKey];
-                                const cb = inst.params[STOP_DEFS[j].colorKey];
-                                setInstanceParam(inst.id, STOP_DEFS[di2].colorKey, cb);
-                                setInstanceParam(inst.id, STOP_DEFS[j].colorKey, ca);
-                                dragState.idx = j;
-                                swapped = true;
-                            }
-                            break;
-                        }
-                    }
-
-                    setInstanceParam(inst.id, STOP_DEFS[dragState.idx].posKey, Math.round(newPos * 1000) / 1000);
-                    updateSlider();
-                    refreshStrips();
-                });
-                handles[i].addEventListener('pointerup',          () => { dragState.active = false; dragState.idx = -1; });
-                handles[i].addEventListener('lostpointercapture', () => { dragState.active = false; dragState.idx = -1; });
-            }
-
-            sliderRow.appendChild(sliderLabel);
-            sliderRow.appendChild(trackWrap);
-
-            const gradBar = document.createElement('div');
-            gradBar.style.cssText = 'height:6px;border-radius:3px;border:1px solid var(--border);margin:2px 6px 4px;pointer-events:none;';
-            gradBar.style.background = mode === 'hue'
-                ? 'linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)'
-                : 'linear-gradient(to right, #000, #fff)';
-            sliderRow.appendChild(gradBar);
-
-            sliderGroup.appendChild(sliderRow);
 
             if (colorBGroup) colorBGroup.after(sliderGroup);
             else content.appendChild(sliderGroup);
-
-            updateSlider();
 
             // --- randomize + palette sort buttons ---
             const randomizeRow = document.createElement('div');
@@ -762,15 +657,43 @@ export function buildEffectBody(inst, onRebuild) {
                 if (onRebuild) onRebuild();
             });
             sliderGroup.after(randomizeRow);
-
-            // Color swatch clicks rebuild the panel (via onRebuild), refreshing the
-            // slider. Palette edits only fire paletteupdate — the strips self-refresh;
-            // keep the slider gradient in sync here too.
-            document.addEventListener('paletteupdate', function onPU() {
-                if (!document.contains(trackWrap)) { document.removeEventListener('paletteupdate', onPU); return; }
-                updateSlider();
-            });
         }
+    }
+
+    if (inst.effectName === 'colorPalette') {
+        // Preset selector and "Randomize All Colors" read as one control, so move
+        // the button into the selector's row and drop its now-empty group.
+        const randomGroup  = content.querySelector('[data-key="paletteRandomize"]');
+        const presetSelect = content.querySelector('[data-inst-param="palettePreset"]');
+        const presetRow    = presetSelect?.closest('.control-row');
+        const randomBtn    = randomGroup?.querySelector('button');
+        if (randomGroup && presetRow && randomBtn) {
+            presetSelect.style.flex = '1';
+            presetSelect.style.minWidth = '0';
+            randomBtn.style.flexShrink = '0';
+            presetRow.appendChild(randomBtn);
+            randomGroup.remove();
+        }
+    }
+
+    if (inst.effectName === 'colorGel' && gelMode(inst.params) !== 'solid') {
+        // Where each color sits along the gradient — the same numbers the canvas
+        // shape edits. Colors 1 and 5 anchor the gradient; 2–4 opt out through
+        // their ✕ swatch, except Color 3 in radial mode, which is mandatory.
+        const radial = gelMode(inst.params) === 'radial';
+        const colorGroups = GEL_STOPS
+            .map(s => content.querySelector(`.control-group[data-inst-param="${s.colorKey}"]`));
+        const sliderGroup = buildStopSlider(inst, {
+            label: 'Gradient Arrangement',
+            stops: GEL_STOPS.map((s, i) => ({ ...s, label: String(i + 1) })),
+            alwaysActive: radial ? [0, 2, GEL_STOPS.length - 1] : [0, GEL_STOPS.length - 1],
+            resolveHex: (key) => resolveColorKey(key, getActivePaletteFor(inst.id)),
+            onSwap: () => { for (const g of colorGroups) g?._refreshSwatches?.(); },
+        });
+
+        const softnessGroup = content.querySelector('[data-inst-param="colorGelGradSoftness"]')?.closest('.control-group');
+        if (softnessGroup) softnessGroup.before(sliderGroup);
+        else content.appendChild(sliderGroup);
     }
 
     if (inst.effectName === 'text') {
@@ -899,7 +822,8 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
     const label = labelOverride ?? schema.label ?? key;
     const currentVal = inst.params[key];
 
-    // Palette action buttons row — Randomize + region selector + From Image
+    // Randomize every palette color. Moved inline with the preset selector by the
+    // colorPalette block in buildEffectBody.
     if (key === 'paletteRandomize') {
         const group = document.createElement('div');
         group.className = 'control-group';
@@ -909,12 +833,10 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         row.className = 'control-row';
         row.style.gap = '6px';
 
-        const isCustom = inst.params.palettePreset === 'custom';
-
         const randomBtn = document.createElement('button');
         randomBtn.className = 'btn';
         randomBtn.textContent = label;
-        randomBtn.disabled = !isCustom;
+        randomBtn.disabled = inst.params.palettePreset !== 'custom';
         randomBtn.addEventListener('click', () => {
             saveState();
             for (let i = 0; i < 8; i++) {
@@ -924,9 +846,49 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
             if (onRebuild) onRebuild();
         });
 
-        const modeRow = document.createElement('div');
-        modeRow.className = 'control-row';
-        modeRow.style.gap = '6px';
+        row.appendChild(randomBtn);
+        group.appendChild(row);
+        return group;
+    }
+
+    // "Pull From <region>" — sample the palette out of the image reaching this
+    // instance. Target mode adds a draggable region box over the canvas.
+    if (key === 'paletteFromImage') {
+        const group = document.createElement('div');
+        group.className = 'control-group';
+        group.dataset.key = 'paletteFromImage';
+
+        const row = document.createElement('div');
+        row.className = 'control-row';
+        row.style.gap = '6px';
+
+        const pullBtn = document.createElement('button');
+        pullBtn.className = 'btn';
+        pullBtn.textContent = label;
+        pullBtn.addEventListener('click', () => {
+            const result = getPixelsBeforeInstance(getStack(), inst.id);
+            if (!result) return;
+            const mode = inst.params.paletteFromImageMode ?? 'whole';
+            const targetBox = {
+                x: inst.params.paletteTargetX ?? 0.3,
+                y: inst.params.paletteTargetY ?? 0.3,
+                w: inst.params.paletteTargetW ?? 0.4,
+                h: inst.params.paletteTargetH ?? 0.4,
+            };
+            const samples = _collectSamples(result.pixels, result.width, result.height, mode, targetBox);
+            const colors = _pickDiverseColors(samples);
+            saveState();
+            setInstanceParam(inst.id, 'palettePreset', 'custom');
+            for (let i = 0; i < 8; i++) {
+                setInstanceParam(inst.id, `palette${i}`, colors[i]);
+            }
+            if (onRebuild) onRebuild();
+        });
+
+        const fromLabel = document.createElement('span');
+        fromLabel.className = 'control-label';
+        fromLabel.textContent = 'From';
+        fromLabel.style.flex = '0 0 auto';
 
         const modeSel = document.createElement('select');
         modeSel.className = 'select-input';
@@ -948,34 +910,10 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
             }
         });
 
-        const fromImageBtn = document.createElement('button');
-        fromImageBtn.className = 'btn';
-        fromImageBtn.textContent = 'From Image';
-        fromImageBtn.addEventListener('click', () => {
-            const result = getPixelsBeforeInstance(getStack(), inst.id);
-            if (!result) return;
-            const mode = inst.params.paletteFromImageMode ?? 'whole';
-            const targetBox = {
-                x: inst.params.paletteTargetX ?? 0.3,
-                y: inst.params.paletteTargetY ?? 0.3,
-                w: inst.params.paletteTargetW ?? 0.4,
-                h: inst.params.paletteTargetH ?? 0.4,
-            };
-            const samples = _collectSamples(result.pixels, result.width, result.height, mode, targetBox);
-            const colors = _pickDiverseColors(samples);
-            saveState();
-            setInstanceParam(inst.id, 'palettePreset', 'custom');
-            for (let i = 0; i < 8; i++) {
-                setInstanceParam(inst.id, `palette${i}`, colors[i]);
-            }
-            if (onRebuild) onRebuild();
-        });
-
-        modeRow.appendChild(fromImageBtn);
-        modeRow.appendChild(modeSel);
-        row.appendChild(randomBtn);
+        row.appendChild(pullBtn);
+        row.appendChild(fromLabel);
+        row.appendChild(modeSel);
         group.appendChild(row);
-        group.appendChild(modeRow);
 
         // Show overlay if already in target mode when control is built
         let overlayToken = null;
@@ -1103,12 +1041,12 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
             setInstanceParam(inst.id, 'palettePreset', 'custom');
             for (let i = 0; i < Math.min(matches.length, 8); i++) {
                 setInstanceParam(inst.id, `palette${i}`, matches[i]);
-                // Update color swatch + hex label in the DOM without rebuilding
+                // Update color swatch + hex field in the DOM without rebuilding
                 const swatch = group.parentElement?.querySelector(`input[data-inst-param="palette${i}"]`);
                 if (swatch) {
                     swatch.value = matches[i];
-                    const span = swatch.nextElementSibling;
-                    if (span) span.textContent = matches[i];
+                    const hexField = swatch.nextElementSibling;
+                    if (hexField) hexField.value = matches[i];
                 }
             }
         });
@@ -1256,6 +1194,48 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
             setInstanceParam(inst.id, 'textBLy', 95);
         });
         row.appendChild(btn);
+        group.appendChild(row);
+        return group;
+    }
+
+    // Right Angles + the angle lock toggle, sharing one row
+    if (key === 'textBoxRightAngles') {
+        const group = document.createElement('div');
+        group.className = 'control-group';
+        const row = document.createElement('div');
+        row.className = 'control-row';
+        row.style.gap = '6px';
+
+        const btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.textContent = label;
+        btn.title = 'Square up the box, keeping its center and rotation';
+        btn.addEventListener('click', () => {
+            saveState();
+            const update = rightAngleCorners(inst.params, canvas.width, canvas.height);
+            for (const [k, v] of Object.entries(update)) setInstanceParam(inst.id, k, v);
+        });
+
+        const lockBtn = document.createElement('button');
+        lockBtn.className = 'btn btn-sm';
+        lockBtn.style.cssText = 'padding:2px 8px;flex-shrink:0;';
+        const paintLock = () => {
+            const locked = !!inst.params.textBoxLockAngles;
+            lockBtn.textContent = locked ? '🔒' : '🔓';
+            lockBtn.title = locked
+                ? 'Angles locked — resizing only changes side lengths'
+                : 'Angles unlocked — corners move freely';
+            lockBtn.style.opacity = locked ? '1' : '0.6';
+        };
+        lockBtn.addEventListener('click', () => {
+            saveState();
+            setInstanceParam(inst.id, 'textBoxLockAngles', !inst.params.textBoxLockAngles);
+            paintLock();
+        });
+        paintLock();
+
+        row.appendChild(btn);
+        row.appendChild(lockBtn);
         group.appendChild(row);
         return group;
     }
@@ -1472,12 +1452,24 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         input.type = 'color';
         input.value = currentVal;
         input.dataset.instParam = key;
-        const hexSpan = document.createElement('span');
-        hexSpan.textContent = currentVal;
-        hexSpan.style.cssText = 'font-size:0.7rem;font-family:monospace;color:var(--text-dim);min-width:4.5ch;';
-        input.addEventListener('input', () => {
-            setInstanceParam(inst.id, key, input.value);
-            hexSpan.textContent = input.value;
+        // Editable hex field — reads as a dim label until focused, so custom codes
+        // can be typed here as well as via the swatch or the batch update box.
+        const hexSpan = document.createElement('input');
+        hexSpan.type = 'text';
+        hexSpan.value = currentVal;
+        hexSpan.spellcheck = false;
+        hexSpan.setAttribute('aria-label', `${label} hex`);
+        hexSpan.style.cssText = 'font-size:0.7rem;font-family:monospace;color:var(--text-dim);'
+            + 'width:8ch;flex-shrink:0;padding:1px 2px;background:transparent;border:1px solid transparent;border-radius:3px;';
+        hexSpan.addEventListener('focus', () => {
+            hexSpan.style.borderColor = 'var(--border)';
+            hexSpan.select();
+        });
+        // Shared write path for the swatch, the hex field, Random and the dropper.
+        const applyColor = (hex) => {
+            setInstanceParam(inst.id, key, hex);
+            input.value = hex;
+            hexSpan.value = hex;
             // If this effect has a preset selector, reset it to 'custom' on manual edits
             const colorEffect = getEffect(inst.effectName);
             if (colorEffect?.params?.palettePreset && inst.params.palettePreset !== 'custom') {
@@ -1489,7 +1481,29 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
             if (inst.effectName === 'colorPalette') {
                 document.dispatchEvent(new CustomEvent('paletteupdate'));
             }
+        };
+
+        input.addEventListener('input', () => applyColor(input.value));
+
+        // Accepts "a1b", "#a1b", "a1b2c3" or "#a1b2c3"; anything else reverts.
+        const commitHex = () => {
+            const raw = hexSpan.value.trim().replace(/^#/, '');
+            const hex = /^[0-9a-fA-F]{3}$/.test(raw)
+                ? ('#' + raw[0] + raw[0] + raw[1] + raw[1] + raw[2] + raw[2]).toLowerCase()
+                : /^[0-9a-fA-F]{6}$/.test(raw) ? ('#' + raw).toLowerCase() : null;
+            const current = inst.params[key] ?? '';
+            if (!hex) { hexSpan.value = current; return; }
+            if (hex === current.toLowerCase()) { hexSpan.value = hex; return; }
+            saveState();
+            applyColor(hex);
+        };
+        hexSpan.addEventListener('change', commitHex);
+        hexSpan.addEventListener('keydown', (e) => { if (e.key === 'Enter') hexSpan.blur(); });
+        hexSpan.addEventListener('blur', () => {
+            hexSpan.style.borderColor = 'transparent';
+            commitHex();
         });
+
         row.appendChild(labelEl);
         row.appendChild(input);
         row.appendChild(hexSpan);
@@ -1498,24 +1512,6 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         // Drag-to-swap for palette color slots
         if (/^palette[0-7]$/.test(key)) {
             const paletteIndex = parseInt(key.slice(-1));
-
-            const randBtn = document.createElement('button');
-            randBtn.className = 'btn btn-sm';
-            randBtn.textContent = '?';
-            randBtn.title = 'Randomize this color';
-            randBtn.style.cssText = 'padding:2px 6px;font-size:0.7rem;flex-shrink:0;';
-            randBtn.addEventListener('click', () => {
-                const hex = '#' + Math.floor(Math.random() * 0x1000000).toString(16).padStart(6, '0');
-                saveState();
-                setInstanceParam(inst.id, 'palettePreset', 'custom');
-                setInstanceParam(inst.id, key, hex);
-                input.value = hex;
-                hexSpan.textContent = hex;
-                if (inst.effectName === 'colorPalette') {
-                    document.dispatchEvent(new CustomEvent('paletteupdate'));
-                }
-            });
-            row.appendChild(randBtn);
 
             // Eyedropper — pick a color from the image (native EyeDropper API).
             if ('EyeDropper' in window) {
@@ -1532,16 +1528,25 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
                     const hex = result?.sRGBHex;
                     if (!hex) return;
                     saveState();
-                    setInstanceParam(inst.id, 'palettePreset', 'custom');
-                    setInstanceParam(inst.id, key, hex);
-                    input.value = hex;
-                    hexSpan.textContent = hex;
-                    if (inst.effectName === 'colorPalette') {
-                        document.dispatchEvent(new CustomEvent('paletteupdate'));
-                    }
+                    applyColor(hex);
                 });
                 row.appendChild(pickBtn);
             }
+
+            const randBtn = document.createElement('button');
+            randBtn.className = 'btn btn-sm';
+            randBtn.textContent = 'Random';
+            randBtn.title = 'Randomize this color';
+            randBtn.style.cssText = 'padding:2px 6px;font-size:0.7rem;flex-shrink:0;';
+            randBtn.addEventListener('click', () => {
+                saveState();
+                applyColor('#' + Math.floor(Math.random() * 0x1000000).toString(16).padStart(6, '0'));
+            });
+            row.appendChild(randBtn);
+
+            // Typing in the hex field must not start a row drag.
+            hexSpan.addEventListener('focus', () => { group.draggable = false; });
+            hexSpan.addEventListener('blur',  () => { group.draggable = true;  });
 
             const handle = document.createElement('span');
             handle.textContent = '⠿';
@@ -1609,6 +1614,14 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         if (schema.maxLength) input.maxLength = schema.maxLength;
         input.addEventListener('input', () => {
             setInstanceParam(inst.id, key, input.value);
+            // Keep the stack-list preview (e.g. "Text (1) zoo") in sync as you
+            // type. Touch the DOM directly — stackPanel already imports this
+            // module, so importing it back would close an import cycle.
+            const effect = getEffect(inst.effectName);
+            if (effect?.labelPreview) {
+                const el = document.querySelector(`.stack-item[data-id="${inst.id}"] .stack-item-sublabel`);
+                if (el) el.textContent = labelPreviewText(effect, inst.params);
+            }
         });
         row.appendChild(labelEl);
         row.appendChild(input);

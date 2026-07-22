@@ -139,6 +139,19 @@ export function drawEllipseOrRect(cx, cy, a, b, angle, isRect) {
     return { edgeW, edgeH, rotHandle };
 }
 
+// Even-odd point-in-polygon for a 4-corner quad given in TL, TR, BR, BL order.
+// Works for skewed/rotated quads, which is what the text and mesh boxes are.
+export function pointInQuad(px, py, tlx, tly, trx, try_, brx, bry, blx, bly) {
+    const verts = [[tlx, tly], [trx, try_], [brx, bry], [blx, bly]];
+    let inside = false;
+    for (let i = 0, j = 3; i < 4; j = i++) {
+        const [xi, yi] = verts[i], [xj, yj] = verts[j];
+        if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi)
+            inside = !inside;
+    }
+    return inside;
+}
+
 export function isInsideFadeShape(mx, my, cx, cy, a, b, angle, isRect = false) {
     const cosA = Math.cos(angle), sinA = Math.sin(angle);
     const lx = (mx - cx) * cosA + (my - cy) * sinA;

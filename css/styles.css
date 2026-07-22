@@ -1534,6 +1534,13 @@ input[type="checkbox"]:checked::after {
     white-space: nowrap;
 }
 
+.stack-item-sublabel {
+    margin-left: 6px;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--text-dim);
+}
+
 .stack-item-actions {
     display: flex;
     align-items: center;

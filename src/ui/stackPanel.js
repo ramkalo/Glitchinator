@@ -1,7 +1,7 @@
 import { EFFECT_CATALOG, EFFECT_CATEGORIES, getEffect } from '../effects/registry.js';
 import { getStack, addEffect, removeEffect, moveEffect, duplicateEffect, setInstanceParam } from '../state/effectStack.js';
 import { saveState } from '../state/undo.js';
-import { buildEffectBody } from './stackControls.js';
+import { buildEffectBody, labelPreviewText } from './stackControls.js';
 import { blitOriginalToScreen } from '../renderer/webgl.js';
 import { processImageImmediate } from '../renderer/pipeline.js';
 import { originalImage } from '../renderer/glstate.js';
@@ -203,6 +203,12 @@ export function renderStackList() {
         const labelEl = document.createElement('span');
         labelEl.className = 'stack-item-label';
         labelEl.textContent = label;
+        if (effect?.labelPreview) {
+            const preview = document.createElement('span');
+            preview.className = 'stack-item-sublabel';
+            preview.textContent = labelPreviewText(effect, inst.params);
+            labelEl.appendChild(preview);
+        }
         header.appendChild(labelEl);
 
         const isMarker = effect?.isMarker === true;

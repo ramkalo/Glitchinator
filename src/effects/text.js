@@ -344,8 +344,11 @@ export const textEffect = {
     ],
     handleParams: [
         'textTLx', 'textTLy', 'textTRx', 'textTRy', 'textBRx', 'textBRy', 'textBLx', 'textBLy',
+        'textBoxLockAngles',
         ...fade.handleParams,
     ],
+    // Shown after the stack-list label so several Text effects tell themselves apart.
+    labelPreview: (p) => p.text,
     overlays: { fade: fade.overlay },
     params: {
         textEnabled:    { default: false, label: 'Enable' },
@@ -415,7 +418,10 @@ export const textEffect = {
         textBRy:        { default: 95, label: 'BR Y' },
         textBLx:        { default: 10, label: 'BL X' },
         textBLy:        { default: 95, label: 'BL Y' },
-        textBoxReset:   { default: null, label: 'Reset Box' },
+        textBoxReset:       { default: null,  label: 'Reset Box' },
+        textBoxRightAngles: { default: null,  label: 'Right Angles' },
+        // Rendered as the small lock toggle beside Right Angles, not as a checkbox.
+        textBoxLockAngles:  { default: false, label: 'Lock Angles' },
         ...fade.params,
         ...blend.params,
     },
@@ -423,7 +429,8 @@ export const textEffect = {
     uiGroups: [
         { keys: ['text', 'textFont', 'textSize', 'textBold', 'textItalic', 'textStrike', 'textLineHeight', 'textReverse', 'textKerning'] },
         { label: 'Color', keys: ['textColor', 'textNoiseRandomize', 'textCharAlpha', 'textOutlineWidth', 'textOutlineColor', 'textBg', 'textBgOpacity', 'textBgGrainSize'] },
-        { label: 'Layout', keys: ['textWrap', 'textAlign', 'textVAlign', 'textBoxReset'] },
+        { label: 'Layout', keys: ['textWrap', 'textAlign', 'textVAlign'] },
+        { label: 'Box', keys: ['textBoxReset', 'textBoxRightAngles'] },
         fade.uiGroup,
         blend.uiGroup,
     ],

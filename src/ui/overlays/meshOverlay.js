@@ -1,7 +1,7 @@
 import { canvas } from '../../renderer/glstate.js';
 import { setInstanceParam, getStack } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
-import { uiCtx, uiOverlay, syncSize, HIT_RADIUS, drawHandle, drawCornerHandle, drawRotHandle, strokeAntLine, isInsideFadeShape } from '../overlayUtils.js';
+import { uiCtx, uiOverlay, syncSize, HIT_RADIUS, drawHandle, drawCornerHandle, drawRotHandle, strokeAntLine, isInsideFadeShape, pointInQuad } from '../overlayUtils.js';
 
 function _verts(p, W, H) {
     return {
@@ -94,17 +94,6 @@ export function drawMeshOverlay(p) {
     }
 }
 
-function _pointInQuad(px, py, tlx, tly, trx, try_, brx, bry, blx, bly) {
-    const verts = [[tlx, tly], [trx, try_], [brx, bry], [blx, bly]];
-    let inside = false;
-    for (let i = 0, j = 3; i < 4; j = i++) {
-        const [xi, yi] = verts[i], [xj, yj] = verts[j];
-        if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi)
-            inside = !inside;
-    }
-    return inside;
-}
-
 export function hitTestMesh(e) {
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left, my = e.clientY - rect.top;
@@ -155,7 +144,7 @@ export function hitTestMesh(e) {
     if (Math.hypot(mx - blx, my - bly) <= HIT_RADIUS) return 'bl';
 
     // Interior — drag the whole quad
-    if (_pointInQuad(mx, my, tlx, tly, trx, try_, brx, bry, blx, bly)) return 'move';
+    if (pointInQuad(mx, my, tlx, tly, trx, try_, brx, bry, blx, bly)) return 'move';
 
     return null;
 }

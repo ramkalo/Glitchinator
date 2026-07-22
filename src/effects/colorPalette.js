@@ -68,7 +68,9 @@ export const colorPaletteEffect = {
                 ['basic',        'Basic RGBCYMKW'],
             ],
         },
-        paletteRandomize: { default: null, label: 'Randomize Colors' },
+        paletteRandomize: { default: null, label: 'Randomize All Colors' },
+        // "Pull From <region>" — samples the image feeding this instance.
+        paletteFromImage: { default: null, label: 'Pull' },
         paletteFromImageMode: {
             default: 'whole',
             hidden: true,
@@ -129,5 +131,12 @@ export const colorPaletteEffect = {
         },
     },
     enabled: (p) => p.paletteEnabled,
+    uiGroups: [
+        { label: 'Preset Palette',        keys: ['palettePreset', 'paletteRandomize'] },
+        { label: 'Color from Image',      keys: ['paletteFromImage'] },
+        { label: 'Colors',                keys: [...Array.from({ length: 8 }, (_, i) => `palette${i}`), 'paletteSortByLuminance'] },
+        { label: 'Batch Hex Update',      keys: ['paletteCopyHex', 'palettePaste'] },
+        { label: 'External Image Palette', keys: ['paletteLoadImage', 'palettePullFromImage'] },
+    ],
     glsl: `void main() { fragColor = texture(uTex, vUV); }`,
 };

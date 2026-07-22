@@ -129,7 +129,9 @@ export function buildPaletteSwatchControl(inst, key, schema, { onRebuild } = {})
     strip.style.cssText = 'display:flex;flex-wrap:wrap;gap:5px;align-items:center;';
     group.appendChild(strip);
 
-    const options = schema.options ?? [];
+    // `optionsFor` lets an effect vary the swatch list with its own state — e.g.
+    // Color Gel drops the ✕ from Color 3 in radial mode, where it is mandatory.
+    const options = schema.optionsFor?.(inst.params) ?? schema.options ?? [];
     const customParam = schema.customParam;
     const hasCustom = customParam && options.some(([v]) => v === 'custom');
     const colorInput = hasCustom ? makeCustomInput(inst, key, customParam, refresh) : null;

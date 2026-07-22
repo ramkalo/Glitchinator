@@ -171,6 +171,26 @@ function _migrateInstance(inst) {
         return migrated;
     }
 
+    // Color Gel: the "2/3/4 Colors" dropdown plus free 2D transition anchors
+    // became five stops with positions along the gradient axis. Switch off the
+    // colors the old zone count never used and drop the dead anchor params.
+    if (inst.effectName === 'colorGel' && 'colorGelGradStops' in (inst.params ?? {})) {
+        const p = { ...inst.params };
+        const zones = Math.max(2, Math.min(4, parseInt(p.colorGelGradStops) || 2));
+        const used = ['colorGelColor', 'colorGelColor2', 'colorGelColor3', 'colorGelColor4'].slice(0, zones);
+        // The old last zone becomes stop 5 so the gradient still spans the image.
+        p.colorGelColor5 = p[used[used.length - 1]] ?? 'palette1';
+        for (const key of ['colorGelColor2', 'colorGelColor3', 'colorGelColor4']) {
+            if (!used.includes(key) || key === used[used.length - 1]) p[key] = 'none';
+        }
+        // Space the remaining stops evenly across the axis.
+        const active = [1, ...[2, 3, 4].filter(i => p[`colorGelColor${i}`] !== 'none'), 5];
+        active.forEach((n, i) => { p[`colorGelPos${n}`] = i / (active.length - 1); });
+        delete p.colorGelGradStops;
+        for (const key of Object.keys(p)) if (/^colorGelT\d[XY]$/.test(key)) delete p[key];
+        return { ...inst, params: p };
+    }
+
     // Prefix-based renames (name + every param key).
     const rename = _RENAMES.find(r => r.from === inst.effectName);
     if (rename) {

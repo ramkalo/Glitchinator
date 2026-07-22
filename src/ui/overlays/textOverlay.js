@@ -1,7 +1,8 @@
 import { canvas } from '../../renderer/glstate.js';
 import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
-import { uiCtx, uiOverlay, syncSize, drawHandle, drawRotHandle, drawCornerHandle, strokeAntLine, HIT_RADIUS, isInsideFadeShape } from '../overlayUtils.js';
+import { uiCtx, uiOverlay, syncSize, drawHandle, drawRotHandle, drawCornerHandle, strokeAntLine, HIT_RADIUS, isInsideFadeShape, pointInQuad } from '../overlayUtils.js';
+import { lockedCornerDrag, lockedEdgeDrag } from './textBoxGeometry.js';
 
 export function textCorners(p, W, H) {
     const tlx  = (p.textTLx ?? 10) / 100 * W,  tly  = (p.textTLy ?? 65) / 100 * H;
@@ -30,7 +31,7 @@ export function drawTextOverlay(p) {
     const W = uiOverlay.width, H = uiOverlay.height;
     uiCtx.clearRect(0, 0, W, H);
 
-    const { tlx, tly, trx, try_, brx, bry, blx, bly, cx, cy,
+    const { tlx, tly, trx, try_, brx, bry, blx, bly,
             topMidX, topMidY, rhx, rhy,
             rightMidX, rightMidY, bottomMidX, bottomMidY, leftMidX, leftMidY } = textCorners(p, W, H);
 
@@ -54,7 +55,6 @@ export function drawTextOverlay(p) {
     drawCornerHandle(trx, try_);
     drawCornerHandle(brx, bry);
     drawCornerHandle(blx, bly);
-    drawHandle(cx, cy);
 
     drawHandle(topMidX,    topMidY);
     drawHandle(rightMidX,  rightMidY);
@@ -115,7 +115,7 @@ export function hitTestText(e) {
     const mx = e.clientX - rect.left, my = e.clientY - rect.top;
     const W = uiOverlay.width, H = uiOverlay.height;
     const p = inst.params;
-    const { tlx, tly, trx, try_, brx, bry, blx, bly, cx, cy, rhx, rhy,
+    const { tlx, tly, trx, try_, brx, bry, blx, bly, rhx, rhy,
             topMidX, topMidY, rightMidX, rightMidY, bottomMidX, bottomMidY, leftMidX, leftMidY } = textCorners(p, W, H);
     const d = (ax, ay) => Math.hypot(mx - ax, my - ay);
 
@@ -124,7 +124,6 @@ export function hitTestText(e) {
     if (d(trx, try_) <= HIT_RADIUS) return 'tr';
     if (d(brx, bry)  <= HIT_RADIUS) return 'br';
     if (d(blx, bly)  <= HIT_RADIUS) return 'bl';
-    if (d(cx,  cy)   <= HIT_RADIUS) return 'center';
     if (d(topMidX,    topMidY)    <= HIT_RADIUS) return 'topEdge';
     if (d(rightMidX,  rightMidY)  <= HIT_RADIUS) return 'rightEdge';
     if (d(bottomMidX, bottomMidY) <= HIT_RADIUS) return 'bottomEdge';
@@ -154,13 +153,33 @@ export function hitTestText(e) {
         if (d(fadeEdgeH[0],     fadeEdgeH[1])     <= HIT_RADIUS) return 'fadeEdgeH';
         if (isInsideFadeShape(mx, my, fcx, fcy, fa, fb, fAngle, shape !== 'ellipse')) return 'fadeCenter';
     }
+
+    // Anywhere inside the box moves it — checked last so the corner, edge and
+    // fade handles sitting on top of the box still win.
+    if (pointInQuad(mx, my, tlx, tly, trx, try_, brx, bry, blx, bly)) return 'center';
     return null;
 }
+
+const CORNER_HANDLES = new Set(['tl', 'tr', 'br', 'bl']);
+const EDGE_HANDLES   = new Set(['topEdge', 'rightEdge', 'bottomEdge', 'leftEdge']);
 
 export function onDragText(e, inst, rect) {
     const mx = e.clientX - rect.left, my = e.clientY - rect.top;
     const W  = uiOverlay.width, H = uiOverlay.height;
     const toP = (v, range) => v / range * 100;
+
+    // Angles locked: corner and edge drags only change side lengths.
+    if (inst.params.textBoxLockAngles && state.dragAnchor
+        && (CORNER_HANDLES.has(state.handle) || EDGE_HANDLES.has(state.handle))) {
+        const update = CORNER_HANDLES.has(state.handle)
+            ? lockedCornerDrag(state.dragAnchor, state.handle, mx, my, W, H)
+            : lockedEdgeDrag(state.dragAnchor, state.handle,
+                             mx - state.dragAnchor.startX, my - state.dragAnchor.startY, W, H);
+        if (update) {
+            for (const [k, v] of Object.entries(update)) setInstanceParam(state.instId, k, v);
+        }
+        return;
+    }
 
     if (state.handle === 'center' && state.dragAnchor) {
         const dx = toP(mx - state.dragAnchor.startX, W);
