@@ -13,6 +13,7 @@ import { drawToolEffect }        from './drawTool.js';
 import { filmSoupEffect }        from './filmSoup.js';
 import { glowEffect }            from './glow.js';
 import { grainEffect }           from './grain.js';
+import { halftoneEffect }        from './halftone.js';
 import { hueShiftEffect }        from './hueShift.js';
 import { kaleidoscopeEffect }    from './kaleidoscope.js';
 import { lineDragEffect }        from './lineDrag.js';
@@ -135,6 +136,7 @@ export const EFFECTS = [
     lineDragEffect,
     corruptedEffect,
     colorGelEffect,
+    halftoneEffect,
     filmSoupMeltEffect,
     filmSoupEffect,
     barrelDistortionEffect,
@@ -224,6 +226,7 @@ export const EFFECT_CATALOG = [
     { name: 'matrixRain',   label: 'Matrix Rain',          category: 'Overlay', description: 'Tile text characters across the image in configurable grid patterns' },
     { name: 'mesh',         label: 'Mesh',                 category: 'Overlay', description: 'Draggable quad grid overlay with configurable line distribution' },
     { name: 'shapeSticker',   label: 'Shape Sticker',         category: 'Overlay', description: 'Apply a shape filled with solid color, static, or image grab' },
+    { name: 'halftone',     label: 'Halftone',             category: 'Overlay', description: 'Dot, diamond, or ASCII halftone with linear, concentric, or luminance-driven size & spacing' },
     { name: 'text',            label: 'Text',                 category: 'Overlay', description: 'Text overlay with paragraph box, formatting, and canvas handles' },
     { name: 'tunnel',       label: 'Tunnel',               category: 'Overlay', description: 'Repeating shapes along a bezier path creating a tunnel illusion' },
     { name: 'glassBlob',    label: 'Glass Blob',           category: 'Overlay', description: 'A single glassy droplet you place, size and shape — refraction, highlight & color' },

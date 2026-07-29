@@ -25,6 +25,70 @@ export function labelPreviewText(effect, params) {
 let activeSliderGroup = null;
 let _paletteDragSrc = null; // { instId, index } while a palette swatch is being dragged
 
+// Paint an accent fill up to the thumb so the track position reads clearly.
+// Skips sliders that own a custom gradient track (they set data-gradient="1").
+function updateSliderFill(range) {
+    if (!range || range.dataset.gradient === '1') return;
+    const min = parseFloat(range.min), max = parseFloat(range.max);
+    const val = parseFloat(range.value);
+    const pct = max > min ? Math.max(0, Math.min(100, ((val - min) / (max - min)) * 100)) : 0;
+    range.style.background =
+        `linear-gradient(90deg, var(--slider-fill) 0%, var(--slider-fill) ${pct}%,` +
+        ` var(--slider-track) ${pct}%, var(--slider-track) 100%)`;
+}
+
+// A slider's numeric readout that becomes an editable input on click.
+// `commit(v)` receives the parsed+clamped value and should push it to state + slider.
+// Returns { el, set } — append `el`, call `set(v)` to refresh the display externally.
+function makeEditableValue({ initial, min, max, commit }) {
+    const span = document.createElement('span');
+    span.className = 'control-value control-value--editable';
+    span.tabIndex = 0;
+    span.title = 'Click to type a value';
+    span.textContent = initial;
+
+    let editing = false;
+    const startEdit = () => {
+        if (editing) return;
+        editing = true;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.inputMode = 'decimal';
+        input.className = 'control-value-input';
+        input.value = span.textContent;
+        span.replaceWith(input);
+        input.focus();
+        input.select();
+
+        const finish = (keep) => {
+            if (!editing) return;
+            editing = false;
+            if (keep) {
+                let v = parseFloat(input.value);
+                if (Number.isFinite(v)) {
+                    if (min != null) v = Math.max(min, v);
+                    if (max != null) v = Math.min(max, v);
+                    span.textContent = v;
+                    commit(v);
+                }
+            }
+            input.replaceWith(span);
+        };
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+            else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+        });
+        input.addEventListener('blur', () => finish(true));
+    };
+
+    span.addEventListener('click', startEdit);
+    span.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEdit(); }
+    });
+
+    return { el: span, set: (v) => { if (!editing) span.textContent = v; } };
+}
+
 // Stores a loaded reference image per palette instance (not serialized)
 const _paletteImages = new Map();
 
@@ -693,6 +757,26 @@ export function buildEffectBody(inst, onRebuild) {
 
         const softnessGroup = content.querySelector('[data-inst-param="colorGelGradSoftness"]')?.closest('.control-group');
         if (softnessGroup) softnessGroup.before(sliderGroup);
+        else content.appendChild(sliderGroup);
+    }
+
+    if (inst.effectName === 'halftone' && (inst.params.halftoneMode ?? 'linear') === 'dynamic') {
+        // Three-stop luminance remap, like Color Remap's luminance stops: the
+        // handles set what counts as low / mid / high luminance. Fixed grayscale
+        // shades stand in for the stop colors (they carry no palette meaning here).
+        const sliderGroup = buildStopSlider(inst, {
+            label: 'Luminance Map',
+            stops: [
+                { posKey: 'halftoneLumLow',  colorKey: 'halftoneLumShade0', label: 'Lo',  defaultPos: 0   },
+                { posKey: 'halftoneLumMid',  colorKey: 'halftoneLumShade1', label: 'Mid', defaultPos: 0.5 },
+                { posKey: 'halftoneLumHigh', colorKey: 'halftoneLumShade2', label: 'Hi',  defaultPos: 1   },
+            ],
+            alwaysActive: [0, 1, 2],
+            resolveHex: (key) => resolveColorKey(key, null),
+            trackBar: 'linear-gradient(to right, #000, #fff)',
+        });
+        const blobsGroup = content.querySelector('[data-inst-param="halftoneLumBlobs"]')?.closest('.control-group');
+        if (blobsGroup) blobsGroup.after(sliderGroup);
         else content.appendChild(sliderGroup);
     }
 
@@ -1380,6 +1464,55 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         return group;
     }
 
+    // Custom crop ratio → two small W:H number boxes rendered as one row.
+    // cropCustomW builds both fields; cropCustomH is absorbed here (returns null below).
+    if (key === 'cropCustomW') {
+        const group = document.createElement('div');
+        group.className = 'control-group';
+        const row = document.createElement('div');
+        row.className = 'control-row';
+        const labelEl = document.createElement('span');
+        labelEl.className = 'control-label';
+        labelEl.textContent = 'Custom Ratio';
+
+        const boxes = document.createElement('span');
+        boxes.style.cssText = 'display:inline-flex;align-items:center;gap:4px;';
+
+        const makeBox = (paramKey) => {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.inputMode = 'numeric';
+            input.dataset.instParam = paramKey;
+            input.value = inst.params[paramKey];
+            input.style.cssText = 'width:6ch;text-align:center;';
+            const commit = () => {
+                const v = parseFloat(input.value);
+                if (Number.isFinite(v) && v > 0) {
+                    saveState();
+                    setInstanceParam(inst.id, paramKey, v);
+                } else {
+                    input.value = inst.params[paramKey]; // revert on invalid
+                }
+            };
+            input.addEventListener('change', commit);
+            input.addEventListener('blur', commit);
+            input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
+            return input;
+        };
+
+        const sep = document.createElement('span');
+        sep.textContent = ':';
+        boxes.appendChild(makeBox('cropCustomW'));
+        boxes.appendChild(sep);
+        boxes.appendChild(makeBox('cropCustomH'));
+
+        row.appendChild(labelEl);
+        row.appendChild(boxes);
+        group.appendChild(row);
+        return group;
+    }
+    if (key === 'cropCustomH') return null; // rendered by the cropCustomW row above
+
     // Textarea for multi-line text entry
     if (key === 'matrixRainText' || key === 'text') {
         const group = document.createElement('div');
@@ -1711,9 +1844,12 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         incBtn.tabIndex = -1;
         trackWrapper.appendChild(range);
         trackWrapper.appendChild(resetBtn);
-        const valueSpan = document.createElement('span');
-        valueSpan.className = 'control-value';
-        valueSpan.textContent = currentVal;
+        const valueCtl = makeEditableValue({
+            initial: currentVal,
+            min: schema.min,
+            max: schema.max,
+            commit: (v) => applyMeshScale(v),
+        });
 
         function applyMeshScale(newScale) {
             const clamped = Math.min(schema.max, Math.max(schema.min, newScale));
@@ -1735,7 +1871,8 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
             setInstanceParam(inst.id, 'meshBLy', cy + (bly - cy) * ratio);
             setInstanceParam(inst.id, key, clamped);
             range.value = clamped;
-            valueSpan.textContent = clamped;
+            valueCtl.set(clamped);
+            updateSliderFill(range);
         }
 
         function activateScaleGroup() {
@@ -1753,11 +1890,13 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         incBtn.addEventListener('click', () => { activateScaleGroup(); applyMeshScale(parseFloat(range.value) + step); });
         resetBtn.addEventListener('click', () => { activateScaleGroup(); applyMeshScale(defaultVal); });
 
+        updateSliderFill(range);
+
         row.appendChild(labelEl);
         row.appendChild(decBtn);
         row.appendChild(trackWrapper);
         row.appendChild(incBtn);
-        row.appendChild(valueSpan);
+        row.appendChild(valueCtl.el);
         group.appendChild(row);
         return group;
     }
@@ -1802,9 +1941,12 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         incBtn.textContent = '+';
         incBtn.tabIndex = -1;
 
-        const valueSpan = document.createElement('span');
-        valueSpan.className = 'control-value';
-        valueSpan.textContent = currentVal;
+        const valueCtl = makeEditableValue({
+            initial: currentVal,
+            min: schema.min,
+            max: schema.max,
+            commit: (v) => applyMeshRotate(v),
+        });
 
         trackWrapper.appendChild(range);
         trackWrapper.appendChild(resetBtn);
@@ -1836,7 +1978,8 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
             setInstanceParam(inst.id, 'meshBLx', bl.x); setInstanceParam(inst.id, 'meshBLy', bl.y);
             setInstanceParam(inst.id, key, clamped);
             range.value = clamped;
-            valueSpan.textContent = clamped;
+            valueCtl.set(clamped);
+            updateSliderFill(range);
         }
 
         function activateRotateGroup() {
@@ -1854,11 +1997,13 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         incBtn.addEventListener('click', () => { activateRotateGroup(); applyMeshRotate(parseFloat(range.value) + step); });
         resetBtn.addEventListener('click', () => { activateRotateGroup(); applyMeshRotate(defaultVal); });
 
+        updateSliderFill(range);
+
         row.appendChild(labelEl);
         row.appendChild(decBtn);
         row.appendChild(trackWrapper);
         row.appendChild(incBtn);
-        row.appendChild(valueSpan);
+        row.appendChild(valueCtl.el);
         group.appendChild(row);
         return group;
     }
@@ -1891,7 +2036,7 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         range.max = schema.max;
         range.step = step;
         range.value = currentVal;
-        if (schema.gradient) range.style.background = schema.gradient;
+        if (schema.gradient) { range.style.background = schema.gradient; range.dataset.gradient = '1'; }
         range.dataset.instParam = key;
 
         const defaultVal = schema.default ?? schema.min;
@@ -1913,16 +2058,20 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         trackWrapper.appendChild(range);
         trackWrapper.appendChild(resetBtn);
 
-        const valueSpan = document.createElement('span');
-        valueSpan.className = 'control-value';
-        valueSpan.textContent = currentVal;
+        const valueCtl = makeEditableValue({
+            initial: currentVal,
+            min: schema.min,
+            max: schema.max,
+            commit: (v) => applyValue(v),
+        });
 
         function applyValue(v) {
             const clamped = Math.min(schema.max, Math.max(schema.min, v));
             range.value = clamped;
             const parsed = parseFloat(range.value);
             setInstanceParam(inst.id, key, parsed);
-            valueSpan.textContent = parsed;
+            valueCtl.set(parsed);
+            updateSliderFill(range);
             range.dispatchEvent(new InputEvent('input', { bubbles: true }));
         }
 
@@ -1939,18 +2088,21 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         range.addEventListener('input', () => {
             const v = parseFloat(range.value);
             setInstanceParam(inst.id, key, v);
-            valueSpan.textContent = v;
+            valueCtl.set(v);
+            updateSliderFill(range);
         });
 
         decBtn.addEventListener('click', () => { activateGroup(); applyValue(parseFloat(range.value) - step); });
         incBtn.addEventListener('click', () => { activateGroup(); applyValue(parseFloat(range.value) + step); });
         resetBtn.addEventListener('click', () => { activateGroup(); applyValue(defaultVal); });
 
+        updateSliderFill(range);
+
         row.appendChild(labelEl);
         row.appendChild(decBtn);
         row.appendChild(trackWrapper);
         row.appendChild(incBtn);
-        row.appendChild(valueSpan);
+        row.appendChild(valueCtl.el);
         group.appendChild(row);
         return group;
     }

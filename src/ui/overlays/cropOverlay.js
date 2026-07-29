@@ -27,7 +27,9 @@ function cropRegion(p, srcW, srcH) {
             maxW = srcW; maxH = srcH;
         }
     } else {
-        const baseRatio = CROP_ASPECT_MAP[p.cropAspect] || 1;
+        const baseRatio = p.cropAspect === 'custom'
+            ? (parseFloat(p.cropCustomW) || 1) / (parseFloat(p.cropCustomH) || 1)
+            : (CROP_ASPECT_MAP[p.cropAspect] || 1);
         const ratio = p.cropFlipAspect ? 1 / baseRatio : baseRatio;
         if (ratio > srcW / srcH) { maxW = srcW; maxH = srcW / ratio; }
         else { maxH = srcH; maxW = srcH * ratio; }

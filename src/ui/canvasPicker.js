@@ -27,6 +27,7 @@ import { drawMeshOverlay, hitTestMesh, onDragMesh } from './overlays/meshOverlay
 import { drawTunnelOverlay, hitTestTunnel, onDragTunnel } from './overlays/tunnelOverlay.js';
 import { drawFilmSoup, hitTestFilmSoup, onDragFilmSoup, addFilmSoupBubble, deleteFilmSoupBubble, canAddFilmSoupBubble } from './overlays/filmSoupOverlay.js';
 import { drawColorGel, hitTestColorGel, onDragColorGel, gelRotAnchor, gelCenterAnchor } from './overlays/colorGelOverlay.js';
+import { drawHalftone, hitTestHalftone, onDragHalftone, htRotAnchor, htCenterAnchor } from './overlays/halftoneOverlay.js';
 import { drawResin, hitTestResin, onDragResin } from './overlays/resinOverlay.js';
 import { drawGlassBlob, hitTestGlassBlob, onDragGlassBlob } from './overlays/glassBlobOverlay.js';
 import { drawCut, hitTestCut, onDragCut, resetCutVertices } from './overlays/cutOverlay.js';
@@ -106,6 +107,7 @@ onStackChange((key) => {
     if (state.mode === 'mesh')         drawMeshOverlay(inst.params);
     if (state.mode === 'tunnel')       drawTunnelOverlay(inst.params);
     if (state.mode === 'colorGel')     drawColorGel(inst.params);
+    if (state.mode === 'halftone')     drawHalftone(inst.params);
     if (state.mode === 'resin')        drawResin(inst.params);
     if (state.mode === 'glassBlob')    drawGlassBlob(inst.params);
     if (state.mode === 'cut') {
@@ -346,6 +348,20 @@ export function showColorGelOverlay(inst) {
     drawColorGel(inst.params);
 }
 
+export function showHalftoneOverlay(inst) {
+    state.shapeKey   = 'halftoneFadeShape';
+    state.wKey       = 'halftoneFadeW';
+    state.hKey       = 'halftoneFadeH';
+    state.angleKey   = 'halftoneFadeAngle';
+    state.enabledKey = 'halftoneFadeEnabled';
+    _activate('halftone', inst, 'halftoneFadeX', 'halftoneFadeY');
+    drawHalftone(inst.params);
+}
+
+export function hideHalftoneOverlay() {
+    if (state.mode === 'halftone') _hideActive();
+}
+
 export function hideColorGelOverlay() {
     if (state.mode === 'colorGel') _hideActive();
 }
@@ -568,6 +584,7 @@ function getCursorForMode(mode, h) {
             return 'default';
         }
         case 'colorGel':
+        case 'halftone':
             return (h && h.startsWith('line')) ? 'grab'
                 : h === 'center' ? 'grab'
                 : h === 'gradRot' ? 'crosshair'
@@ -614,6 +631,7 @@ function getCursorForMode(mode, h) {
 
 const HIT_FNS = {
     colorGel:       hitTestColorGel,
+    halftone:       hitTestHalftone,
     tunnel:         hitTestTunnel,
     mesh:           hitTestMesh,
     drawTool:       hitTestDrawTool,
@@ -639,6 +657,7 @@ const HIT_FNS = {
 
 const DRAG_FNS = {
     colorGel:       onDragColorGel,
+    halftone:       onDragHalftone,
     tunnel:         onDragTunnel,
     mesh:           onDragMesh,
     drawTool:       onDragDrawTool,
@@ -663,6 +682,7 @@ const DRAG_FNS = {
 
 const DRAW_FNS = {
     colorGel:       drawColorGel,
+    halftone:       drawHalftone,
     tunnel:         drawTunnelOverlay,
     mesh:           drawMeshOverlay,
     drawTool:       drawDrawTool,
@@ -820,6 +840,18 @@ function onDown(e) {
         state.dragAnchor = (h === 'center')
             ? gelCenterAnchor(p2, mx2, my2, W2, H2)
             : gelRotAnchor(p2, mx2, my2, W2, H2);
+    }
+
+    // Halftone: same as Color Gel — capture the rotation start angle / grab offset.
+    if (state.mode === 'halftone' && (h === 'gradRot' || h === 'center')) {
+        const rect2 = canvas.getBoundingClientRect();
+        const inst2 = getStack().find(i => i.id === state.instId);
+        const p2    = inst2?.params ?? {};
+        const mx2   = e.clientX - rect2.left, my2 = e.clientY - rect2.top;
+        const W2    = uiOverlay.width, H2 = uiOverlay.height;
+        state.dragAnchor = (h === 'center')
+            ? htCenterAnchor(p2, mx2, my2, W2, H2)
+            : htRotAnchor(p2, mx2, my2, W2, H2);
     }
 
     // Special dragAnchor setup for text box drags. Corners need it too: with

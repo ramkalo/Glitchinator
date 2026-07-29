@@ -48,7 +48,13 @@ void main() {
     // any resolution. Without this, grain is sized in absolute render-pixels and
     // looks soft in the fit-to-screen preview but harsh in the full-res export.
     float resScale = max(min(uResolution.x, uResolution.y) / 1080.0, 1.0);
-    float gs = max(1.0, grainSize * resScale);
+    // Piecewise grain-size curve: gentle over the first half of the slider,
+    // aggressive (chunky pixels) over the second half.
+    float t = clamp((grainSize - 1.0) / 199.0, 0.0, 1.0);
+    float sizeCurve = (t < 0.5)
+        ? mix(1.0, 8.0, t / 0.5)              // 1..8 px across the lower half (subtle)
+        : mix(8.0, 200.0, (t - 0.5) / 0.5);   // 8..200 px across the upper half (steep)
+    float gs = max(1.0, sizeCurve * resScale);
     vec2 cellUV = floor(vUV * uResolution / gs) * gs / uResolution;
     vec3 col = c.rgb * 255.0;
 

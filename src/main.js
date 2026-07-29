@@ -223,10 +223,12 @@ document.getElementById('dropZone').addEventListener('drop', function(e) {
 // ---------------------------------------------------------------------------
 
 document.getElementById('savePresetBtn').addEventListener('click', function() {
+    document.getElementById('prefsModal').classList.add('hidden');
     document.getElementById('presetModal').classList.remove('hidden');
 });
 
 document.getElementById('loadPresetBtn').addEventListener('click', function() {
+    document.getElementById('prefsModal').classList.add('hidden');
     document.getElementById('presetModal').classList.remove('hidden');
     renderPresetList();
 });

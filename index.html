@@ -30,23 +30,19 @@
             <button class="mobile-menu-toggle sidebar-toggle" id="sidebarToggle">&#9881;</button>
             <div class="toolbar">
                 <div class="toolbar-group">
+                    <button class="btn" id="prefsBtn" title="Preferences">&#9881; Preferences</button>
                     <button class="btn" id="loadCanvasBtn">Load Canvas</button>
                     <button class="btn" id="loadBtn">Load Image</button>
-                    <button class="btn" id="exportBtn" disabled>Export</button>
                 </div>
                 <div class="toolbar-group">
                     <button class="btn" id="undoBtn" disabled>Undo</button>
                     <button class="btn" id="redoBtn" disabled>Redo</button>
                 </div>
-                <div class="toolbar-group">
-                    <button class="btn" id="savePresetBtn" disabled>Save Preset</button>
-                    <button class="btn" id="loadPresetBtn">Load Preset</button>
+                <div class="toolbar-group toolbar-group--info">
+                    <div class="image-info" id="imageInfo">No image loaded</div>
                 </div>
                 <div class="toolbar-group">
-                    <button class="btn" id="loadFontBtn">Load Font</button>
-                </div>
-                <div class="toolbar-group">
-                    <button class="btn" id="prefsBtn" title="Preferences">&#9881; Preferences</button>
+                    <button class="btn" id="exportBtn" disabled>Export Image</button>
                 </div>
             </div>
             <input type="file" id="fileInput" accept="image/*">
@@ -104,7 +100,6 @@
                 <div class="sheet-handle" id="sheetHandle">
                     <div class="sheet-handle-bar"></div>
                 </div>
-                <div class="image-info" id="imageInfo">No image loaded</div>
 
                 <div class="sidebar-controls">
                 <div class="mobile-toolbar mobile-toolbar-top">
@@ -112,18 +107,19 @@
                     <button class="btn" id="loadPresetBtnMobile">Load Preset</button>
                 </div>
 
-                <!-- Effect List Panel -->
-                <div id="stackPanel" class="panel-view">
-                    <button id="compareBtn" class="compare-btn" type="button" title="Hold to see the original image">Hold to Compare</button>
-                    <div id="effectStackList" class="effect-stack-list">
-                        <div class="stack-empty">No effects added yet.<br>Click + Add Effect to start.</div>
+                <!-- Effect Panel — tabbed: category libraries + current effects -->
+                <div id="stackPanel" class="panel-view panel-mode-current">
+                    <div id="panelTabs" class="panel-tabs">
+                        <div id="panelCategoryTabs" class="panel-tabs-row" role="tablist"></div>
+                        <button id="panelCurrentTab" class="panel-tab panel-tab--current" type="button" role="tab">Current Effects</button>
                     </div>
-                    <div id="effectPicker" class="effect-picker">
-                        <div id="effectPickerHeader" class="effect-picker-header" role="button" tabindex="0" title="Hide effect library" aria-expanded="true">
-                            <span>Effect Library</span>
-                            <span class="effect-picker-chevron" aria-hidden="true">▾</span>
+                    <div id="panelContent" class="panel-content">
+                        <div id="currentView" class="current-view">
+                            <button id="compareBtn" class="compare-btn compare-btn--sm" type="button" title="Hold to see the original image">Hold to Compare</button>
+                            <div id="effectStackList" class="effect-stack-list">
+                                <div class="stack-empty">No effects added yet.<br>Pick a category tab above to add one.</div>
+                            </div>
                         </div>
-                        <div id="effectCatalogTabs" class="effect-catalog-tabs" role="tablist"></div>
                         <div id="effectCatalogList" class="effect-catalog-list"></div>
                     </div>
                 </div>
@@ -153,6 +149,19 @@
                 <div class="pref-segmented" id="uiSideToggle" role="group" aria-label="UI Side">
                     <button class="pref-seg-btn" type="button" data-side="left">Left</button>
                     <button class="pref-seg-btn" type="button" data-side="right">Right</button>
+                </div>
+            </div>
+            <div class="pref-row">
+                <span class="pref-label">Fonts</span>
+                <div class="pref-actions">
+                    <button class="btn" id="loadFontBtn">Load Font</button>
+                </div>
+            </div>
+            <div class="pref-row">
+                <span class="pref-label">Presets</span>
+                <div class="pref-actions">
+                    <button class="btn" id="savePresetBtn" disabled>Save Preset</button>
+                    <button class="btn" id="loadPresetBtn">Load Preset</button>
                 </div>
             </div>
             <div class="modal-actions">

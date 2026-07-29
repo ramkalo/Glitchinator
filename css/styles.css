@@ -52,6 +52,8 @@
     --text-dim: #666666;
     --border: #333333;
     --success: #888888;
+    --slider-track: #4a4a4a;
+    --slider-fill: #b8b8b8;
 }
 
 body {
@@ -310,7 +312,8 @@ body {
 }
 
 .sidebar {
-    width: 430px;
+    width: clamp(320px, 32vw, 430px);
+    flex-shrink: 0;
     background: var(--bg-panel);
     border-left: 2px solid var(--border);
     overflow: hidden;
@@ -425,20 +428,49 @@ body {
     text-align: right;
 }
 
+/* Click-to-edit numeric readout next to a slider */
+.control-value--editable {
+    cursor: text;
+    border-bottom: 1px dashed transparent;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.control-value--editable:hover,
+.control-value--editable:focus {
+    color: var(--text);
+    border-bottom-color: var(--text-dim);
+    outline: none;
+}
+
+.control-value-input {
+    font-family: inherit;
+    font-size: 0.75rem;
+    color: var(--accent);
+    text-align: right;
+    min-width: 40px;
+    width: 52px;
+    padding: 1px 3px;
+    background: var(--bg-input);
+    border: 1px solid var(--accent);
+    border-radius: 0;
+}
+
 input[type="range"] {
     flex: 1;
     -webkit-appearance: none;
-    background: var(--bg-input);
-    height: 6px;
-    border-radius: 3px;
+    background: var(--slider-track);
+    border: 1px solid var(--border);
+    height: 8px;
+    border-radius: 4px;
     cursor: pointer;
 }
 
 input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 14px;
-    height: 14px;
-    background: var(--accent);
+    width: 15px;
+    height: 15px;
+    background: var(--text);
+    border: 1px solid var(--bg-dark);
     border-radius: 0;
     transform: rotate(45deg);
     cursor: pointer;
@@ -450,13 +482,13 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 input[type="range"]::-moz-range-thumb {
-    width: 14px;
-    height: 14px;
-    background: var(--accent);
+    width: 15px;
+    height: 15px;
+    background: var(--text);
+    border: 1px solid var(--bg-dark);
     border-radius: 0;
     transform: rotate(45deg);
     cursor: pointer;
-    border: none;
 }
 
 /* Slider enhancement widget (+/−/reset buttons on last-touched slider) */
@@ -680,11 +712,33 @@ input[type="checkbox"]:checked::after {
 }
 
 .image-info {
-    padding: 10px 15px;
+    padding: 8px 12px;
     background: var(--bg-input);
     font-size: 0.75rem;
     color: var(--text-dim);
-    border-bottom: 1px solid var(--border);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
+}
+
+/* Image Data group flexes/truncates so it never pushes Export off the row */
+.toolbar-group--info {
+    flex: 0 1 auto;
+    min-width: 0;
+}
+
+.toolbar-group--info .image-info {
+    flex: 0 1 auto;
+    min-width: 0;
+}
+
+/* Preference modal action buttons */
+.pref-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -1374,41 +1428,6 @@ input[type="checkbox"]:checked::after {
    ============================================================ */
 
 /* Panel tabs */
-.panel-tabs {
-    display: flex;
-    border-bottom: 2px solid var(--border);
-    background: var(--bg-panel);
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
-.panel-tab {
-    flex: 1;
-    background: transparent;
-    border: none;
-    border-bottom: 2px solid transparent;
-    color: var(--text-dim);
-    font-family: inherit;
-    font-size: 0.8rem;
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    padding: 10px;
-    cursor: pointer;
-    margin-bottom: -2px;
-    transition: all 0.2s;
-}
-
-.panel-tab:hover {
-    color: var(--text);
-}
-
-.panel-tab.active {
-    color: var(--text);
-    border-bottom-color: var(--accent);
-}
-
 /* Panel views */
 .panel-view {
     display: flex;
@@ -1431,6 +1450,11 @@ input[type="checkbox"]:checked::after {
     gap: 4px;
     min-height: 60px;
     overflow-y: auto;
+}
+
+/* Inside the Current Effects tab the parent already pads the sides. */
+.current-view .effect-stack-list {
+    padding: 0 0 12px;
 }
 
 .stack-empty {
@@ -1606,10 +1630,76 @@ input[type="checkbox"]:checked::after {
     font-size: 0.72rem;
 }
 
-/* Effect picker — always-visible catalog below the stack list */
+/* ── Panel tabs — category libraries + Current Effects ─────────────────── */
+.panel-tabs {
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--accent);
+}
+
+.panel-tabs-row {
+    display: flex;
+}
+
+.panel-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 10px 4px;
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.panel-tab:hover {
+    color: var(--text);
+    background: var(--bg-input);
+}
+
+.panel-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+/* Current Effects tab — full width, own row below the category tabs */
+.panel-tab--current {
+    display: block;
+    width: 100%;
+    border-top: 1px solid var(--border);
+}
+
+/* ── Panel content — one view visible at a time ───────────────────────── */
+.panel-content {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.current-view {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 8px 0;
+    overflow: hidden;
+}
+
+/* Show only the active tab's view */
+.panel-mode-current #effectCatalogList { display: none; }
+.panel-mode-library #currentView { display: none; }
+
 .compare-btn {
     flex-shrink: 0;
-    margin: 0 0 6px;
+    align-self: flex-start;
+    margin: 0 0 8px;
     background: var(--bg-input);
     color: var(--text);
     border: 1px solid var(--border);
@@ -1623,6 +1713,12 @@ input[type="checkbox"]:checked::after {
     -webkit-user-select: none;
 }
 
+/* Compact variant used in the Current Effects tab */
+.compare-btn--sm {
+    padding: 5px 10px;
+    font-size: 0.72rem;
+}
+
 .compare-btn:hover {
     background: var(--border);
     border-color: var(--accent);
@@ -1634,63 +1730,6 @@ input[type="checkbox"]:checked::after {
     color: #000;
 }
 
-.effect-picker {
-    border-top: 1px solid var(--accent);
-    background: var(--bg-panel);
-    display: flex;
-    flex-direction: column;
-    flex: 0 1 75vh;
-    min-height: 0;
-    overflow: hidden;
-}
-
-.effect-picker-header {
-    padding: 14px 12px;
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    cursor: pointer;
-    user-select: none;
-    transition: background 0.15s, color 0.15s;
-}
-
-.effect-picker-header:hover {
-    background: var(--bg-input);
-    color: var(--accent);
-}
-
-.effect-picker-chevron {
-    font-size: 0.9rem;
-    line-height: 1;
-    transition: transform 0.15s;
-}
-
-.effect-picker.collapsed .effect-picker-chevron {
-    transform: rotate(-90deg);
-}
-
-/* Collapsed: hide the catalog list and let the picker shrink to the header. */
-.effect-picker.collapsed {
-    flex: 0 0 auto;
-}
-
-.effect-picker.collapsed .effect-catalog-list,
-.effect-picker.collapsed .effect-catalog-tabs {
-    display: none;
-}
-
-.effect-picker.collapsed .effect-picker-header {
-    border-bottom: none;
-}
-
 .effect-catalog-list {
     overflow-y: auto;
     flex: 1;
@@ -1699,39 +1738,6 @@ input[type="checkbox"]:checked::after {
     display: flex;
     flex-direction: column;
     gap: 1px;
-}
-
-.effect-catalog-tabs {
-    display: flex;
-    flex-shrink: 0;
-    border-bottom: 1px solid var(--border);
-}
-
-.catalog-tab {
-    flex: 1;
-    background: transparent;
-    border: none;
-    border-bottom: 2px solid transparent;
-    color: var(--text-dim);
-    font-family: inherit;
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    padding: 9px 4px;
-    cursor: pointer;
-    user-select: none;
-    transition: color 0.15s, border-color 0.15s, background 0.15s;
-}
-
-.catalog-tab:hover {
-    color: var(--text);
-    background: var(--bg-input);
-}
-
-.catalog-tab.active {
-    color: var(--accent);
-    border-bottom-color: var(--accent);
 }
 
 .catalog-item {

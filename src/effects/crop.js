@@ -21,7 +21,9 @@ function computeCropRegion(p, srcW, srcH) {
             maxW = srcW; maxH = srcH;
         }
     } else {
-        const baseRatio = ASPECT_MAP[p.cropAspect] || 1;
+        const baseRatio = p.cropAspect === 'custom'
+            ? (parseFloat(p.cropCustomW) || 1) / (parseFloat(p.cropCustomH) || 1)
+            : (ASPECT_MAP[p.cropAspect] || 1);
         const ratio = p.cropFlipAspect ? 1 / baseRatio : baseRatio;
         if (ratio > srcW / srcH) { maxW = srcW; maxH = srcW / ratio; }
         else { maxH = srcH; maxW = srcH * ratio; }
@@ -42,17 +44,20 @@ export const cropEffect = {
     paramKeys: ['cropAspect', 'cropFlipAspect', 'cropX', 'cropY', 'cropScale'],
     params: {
         cropEnabled:    { default: false, label: 'Enable' },
-        cropAspect:     { default: 'original', label: 'Aspect', options: [['original', 'Original'], ['free', 'Free'], ['1:1', '1:1'], ['4:3', '4:3'], ['16:9', '16:9'], ['3:2', '3:2'], ['22:17', '22:17']] },
+        cropAspect:     { default: 'original', label: 'Aspect', options: [['original', 'Original'], ['free', 'Free'], ['custom', 'Custom'], ['1:1', '1:1'], ['4:3', '4:3'], ['16:9', '16:9'], ['3:2', '3:2'], ['22:17', '22:17']] },
         cropFlipAspect: { default: false, label: 'Flip Aspect' },
         cropX:          { default: 0, min: -50, max: 50, label: 'X' },
         cropY:          { default: 0, min: -50, max: 50, label: 'Y' },
         cropScale:      { default: 100, min: 10, max: 100, label: 'Scale' },
         cropFreeW:      { default: 100, min: 1, max: 100, label: 'Width %' },
         cropFreeH:      { default: 100, min: 1, max: 100, label: 'Height %' },
+        cropCustomW:    { default: 16, label: 'W' },
+        cropCustomH:    { default: 9,  label: 'H' },
     },
     handleParams: ['cropX', 'cropY', 'cropScale', 'cropFreeW', 'cropFreeH'],
     uiGroups: (p) => {
         const keys = ['cropAspect'];
+        if (p.cropAspect === 'custom') keys.push('cropCustomW', 'cropCustomH');
         if (p.cropAspect !== 'free') keys.push('cropFlipAspect');
         return [{ keys }];
     },

@@ -5,14 +5,14 @@ import { buildEffectBody, labelPreviewText } from './stackControls.js';
 import { blitOriginalToScreen } from '../renderer/webgl.js';
 import { processImageImmediate } from '../renderer/pipeline.js';
 import { originalImage } from '../renderer/glstate.js';
-import { showFadeOverlay, hideFadeOverlay, showCropOverlay, hideCropOverlay, showViewportOverlay, hideViewportOverlay, showMatrixRainOverlay, hideMatrixRainOverlay, showLineDragOverlay, hideLineDragOverlay, showChromaOverlay, hideChromaOverlay, showVignetteOverlay, hideVignetteOverlay, showCorruptedOverlay, hideCorruptedOverlay, showCRTCurvatureOverlay, hideCRTCurvatureOverlay, showTextOverlay, hideTextOverlay, showDoubleExposureOverlay, hideDoubleExposureOverlay, showShapeStickerOverlay, hideShapeStickerOverlay, showKaleidoscopeOverlay, hideKaleidoscopeOverlay, showDigitalSmearOverlay, hideDigitalSmearOverlay, showDrawToolOverlay, hideDrawToolOverlay, showMeshOverlay, hideMeshOverlay, showTunnelOverlay, hideTunnelOverlay, showFilmSoupOverlay, hideFilmSoupOverlay, showColorGelOverlay, hideColorGelOverlay, showResinOverlay, hideResinOverlay, showGlassBlobOverlay, hideGlassBlobOverlay, showCutOverlay, hideCutOverlay } from './canvasPicker.js';
+import { showFadeOverlay, hideFadeOverlay, showCropOverlay, hideCropOverlay, showViewportOverlay, hideViewportOverlay, showMatrixRainOverlay, hideMatrixRainOverlay, showLineDragOverlay, hideLineDragOverlay, showChromaOverlay, hideChromaOverlay, showVignetteOverlay, hideVignetteOverlay, showCorruptedOverlay, hideCorruptedOverlay, showCRTCurvatureOverlay, hideCRTCurvatureOverlay, showTextOverlay, hideTextOverlay, showDoubleExposureOverlay, hideDoubleExposureOverlay, showShapeStickerOverlay, hideShapeStickerOverlay, showKaleidoscopeOverlay, hideKaleidoscopeOverlay, showDigitalSmearOverlay, hideDigitalSmearOverlay, showDrawToolOverlay, hideDrawToolOverlay, showMeshOverlay, hideMeshOverlay, showTunnelOverlay, hideTunnelOverlay, showFilmSoupOverlay, hideFilmSoupOverlay, showColorGelOverlay, hideColorGelOverlay, showHalftoneOverlay, hideHalftoneOverlay, showResinOverlay, hideResinOverlay, showGlassBlobOverlay, hideGlassBlobOverlay, showCutOverlay, hideCutOverlay } from './canvasPicker.js';
 
 let _expandedId = null;
 
 export function initStackPanel() {
-    renderCatalog();
-    initPickerToggle();
+    initTabs();
     initCompareButton();
+    renderStackList();
 }
 
 function initCompareButton() {
@@ -47,22 +47,67 @@ function initCompareButton() {
     btn.addEventListener('blur', restore);
 }
 
-function initPickerToggle() {
-    const picker = document.getElementById('effectPicker');
-    const header = document.getElementById('effectPickerHeader');
-    if (!picker || !header) return;
-    const toggle = () => {
-        const collapsed = picker.classList.toggle('collapsed');
-        header.title = collapsed ? 'Show effect library' : 'Hide effect library';
-        header.setAttribute('aria-expanded', String(!collapsed));
-    };
-    header.addEventListener('click', toggle);
-    header.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            toggle();
-        }
+// --- Tab bar: category libraries + Current Effects ---------------------------
+// _activeTab is either a category name (from EFFECT_CATEGORIES) or 'current'.
+
+let _activeTab = 'current';
+
+function initTabs() {
+    const panel = document.getElementById('stackPanel');
+    const catTabs = document.getElementById('panelCategoryTabs');
+    const currentTab = document.getElementById('panelCurrentTab');
+    if (!panel || !catTabs || !currentTab) return;
+
+    // Only categories that actually contain effects get a tab.
+    const populated = EFFECT_CATEGORIES.filter(c =>
+        EFFECT_CATALOG.some(e => e.category === c)
+    );
+
+    catTabs.innerHTML = '';
+    for (const category of populated) {
+        const tab = document.createElement('button');
+        tab.type = 'button';
+        tab.className = 'panel-tab';
+        tab.dataset.tab = category;
+        tab.setAttribute('role', 'tab');
+        tab.textContent = category;
+        tab.addEventListener('click', () => showTab(category));
+        catTabs.appendChild(tab);
+    }
+
+    currentTab.addEventListener('click', () => showTab('current'));
+
+    showTab(_activeTab);
+}
+
+function showTab(tab) {
+    _activeTab = tab;
+    const panel = document.getElementById('stackPanel');
+    if (!panel) return;
+
+    const isCurrent = tab === 'current';
+    panel.classList.toggle('panel-mode-current', isCurrent);
+    panel.classList.toggle('panel-mode-library', !isCurrent);
+
+    // Highlight the active tab button.
+    panel.querySelectorAll('.panel-tab').forEach(btn => {
+        const on = (btn.dataset.tab ?? 'current') === tab;
+        btn.classList.toggle('active', on);
+        btn.setAttribute('aria-selected', String(on));
     });
+
+    if (!isCurrent) renderCategoryList(tab);
+}
+
+function renderCategoryList(category) {
+    const list = document.getElementById('effectCatalogList');
+    if (!list) return;
+    list.innerHTML = '';
+    for (const entry of EFFECT_CATALOG) {
+        if (entry.category !== category) continue;
+        list.appendChild(makeCatalogItem(entry));
+    }
+    list.scrollTop = 0;
 }
 
 function makeCatalogItem(entry) {
@@ -76,61 +121,18 @@ function makeCatalogItem(entry) {
         <button class="catalog-item-add" title="Add ${entry.label}">+</button>
     `;
     item.querySelector('.catalog-item-add').addEventListener('click', () => {
-        const PALETTE_DEPENDENT = new Set(['colorRemap', 'matrixRain', 'shapeSticker', 'text', 'corrupted', 'drawTool', 'mesh', 'tunnel', 'colorGel']);
+        const PALETTE_DEPENDENT = new Set(['colorRemap', 'matrixRain', 'shapeSticker', 'text', 'corrupted', 'drawTool', 'mesh', 'tunnel', 'colorGel', 'halftone']);
         saveState();
         if (PALETTE_DEPENDENT.has(entry.name) && !getStack().some(i => i.effectName === 'colorPalette')) {
             addEffect('colorPalette');
         }
         const inst = addEffect(entry.name);
         if (inst) _expandedId = inst.id;
+        // Jump to Current Effects so the freshly added effect is visible + expanded.
+        showTab('current');
         renderStackList();
     });
     return item;
-}
-
-let _activeCategory = EFFECT_CATEGORIES[0];
-
-function renderCatalog() {
-    const tabs = document.getElementById('effectCatalogTabs');
-    const list = document.getElementById('effectCatalogList');
-    tabs.innerHTML = '';
-    list.innerHTML = '';
-
-    // Group entries by category, preserving catalog order within each group.
-    const byCategory = new Map(EFFECT_CATEGORIES.map(c => [c, []]));
-    for (const entry of EFFECT_CATALOG) {
-        if (!entry.category) continue;
-        if (!byCategory.has(entry.category)) byCategory.set(entry.category, []);
-        byCategory.get(entry.category).push(entry);
-    }
-
-    const categories = [...byCategory.keys()].filter(c => byCategory.get(c).length);
-    if (!categories.includes(_activeCategory)) _activeCategory = categories[0];
-
-    const showCategory = (category) => {
-        _activeCategory = category;
-        tabs.querySelectorAll('.catalog-tab').forEach(t => {
-            const on = t.dataset.category === category;
-            t.classList.toggle('active', on);
-            t.setAttribute('aria-selected', String(on));
-        });
-        list.innerHTML = '';
-        for (const entry of byCategory.get(category)) list.appendChild(makeCatalogItem(entry));
-        list.scrollTop = 0;
-    };
-
-    for (const category of categories) {
-        const tab = document.createElement('button');
-        tab.type = 'button';
-        tab.className = 'catalog-tab';
-        tab.dataset.category = category;
-        tab.setAttribute('role', 'tab');
-        tab.textContent = category;
-        tab.addEventListener('click', () => showCategory(category));
-        tabs.appendChild(tab);
-    }
-
-    showCategory(_activeCategory);
 }
 
 export function renderStackList() {
@@ -139,7 +141,7 @@ export function renderStackList() {
     const stack = getStack();
 
     if (stack.length === 0) {
-        container.innerHTML = '<div class="stack-empty">No effects added yet.<br>Use the list below to add one.</div>';
+        container.innerHTML = '<div class="stack-empty">No effects added yet.<br>Pick a category tab above to add one.</div>';
         return;
     }
 
@@ -184,8 +186,7 @@ export function renderStackList() {
 
         const item = document.createElement('div');
         const isViewportItem = inst.effectName === 'viewport' || inst.effectName === 'viewportEntry'
-            || inst.effectName === 'doubleExposureEntry'
-            || inst.effectName === 'filmSoup' || inst.effectName === 'filmSoupMelt';
+            || inst.effectName === 'doubleExposureEntry';
         item.className = 'stack-item' + (isViewportItem ? ' stack-item--viewport' : '');
         item.dataset.id = inst.id;
         item.dataset.index = i;
@@ -353,6 +354,7 @@ export function renderStackList() {
     if (newEffect !== 'tunnel')         hideTunnelOverlay();
     if (newEffect !== 'filmSoup')       hideFilmSoupOverlay();
     if (newEffect !== 'colorGel')       hideColorGelOverlay();
+    if (newEffect !== 'halftone')       hideHalftoneOverlay();
     if (newEffect !== 'resin')          hideResinOverlay();
     if (newEffect !== 'glassBlob')      hideGlassBlobOverlay();
     if (newEffect !== 'cut')            hideCutOverlay();
@@ -384,6 +386,7 @@ export function renderStackList() {
     else if (newEffect === 'tunnel')        showTunnelOverlay(expandedInst);
     else if (newEffect === 'filmSoup')      showFilmSoupOverlay(expandedInst);
     else if (newEffect === 'colorGel')      showColorGelOverlay(expandedInst);
+    else if (newEffect === 'halftone')      showHalftoneOverlay(expandedInst);
     else if (newEffect === 'resin')         showResinOverlay(expandedInst);
     else if (newEffect === 'glassBlob')     showGlassBlobOverlay(expandedInst);
     else if (newEffect === 'cut')           showCutOverlay(expandedInst);
