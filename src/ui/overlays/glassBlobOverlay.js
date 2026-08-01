@@ -1,7 +1,7 @@
 import { canvas } from '../../renderer/glstate.js';
 import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
-import { uiCtx, uiOverlay, syncSize, drawHandle, drawCornerHandle, drawRotHandle, HIT_RADIUS } from '../overlayUtils.js';
+import { uiCtx, uiOverlay, syncSize, drawHandle, drawCornerHandle, drawRotHandle, HIT_RADIUS, applyGrab } from '../overlayUtils.js';
 import { blobHarmonics } from '../../effects/glassBlob.js';
 
 // Unit irregular radius at angle (matches the shader's gbRadiusAt; uses the SAME
@@ -114,8 +114,9 @@ export function onDragGlassBlob(e, inst, rect) {
     const ly = -ox * g.sa + oy * g.ca;
 
     if (state.handle === 'center') {
-        setInstanceParam(state.instId, 'glassBlobX', clamp((mx / w) * 100, 0, 100));
-        setInstanceParam(state.instId, 'glassBlobY', clamp((my / h) * 100, 0, 100));
+        const [gx, gy] = applyGrab(g.cx, g.cy, mx, my);
+        setInstanceParam(state.instId, 'glassBlobX', clamp((gx / w) * 100, 0, 100));
+        setInstanceParam(state.instId, 'glassBlobY', clamp((gy / h) * 100, 0, 100));
     } else if (state.handle === 'light') {
         setInstanceParam(state.instId, 'glassBlobLightX', clamp((mx / w) * 100, 0, 100));
         setInstanceParam(state.instId, 'glassBlobLightY', clamp((my / h) * 100, 0, 100));

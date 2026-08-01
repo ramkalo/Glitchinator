@@ -5,7 +5,7 @@ import { setCropPreviewActive } from '../state/cropPreview.js';
 import { processImageImmediate } from '../renderer/pipeline.js';
 
 import { state } from './overlayState.js';
-import { uiOverlay, hitTestCentre } from './overlayUtils.js';
+import { uiOverlay, hitTestCentre, applyGrab } from './overlayUtils.js';
 
 import { drawFade,           hitTestFade,           onDragFade           } from './overlays/fadeOverlay.js';
 import { drawDoubleExposure, hitTestDoubleExposure, onDragDoubleExposure } from './overlays/doubleExposureOverlay.js';
@@ -28,6 +28,8 @@ import { drawTunnelOverlay, hitTestTunnel, onDragTunnel } from './overlays/tunne
 import { drawFilmSoup, hitTestFilmSoup, onDragFilmSoup, addFilmSoupBubble, deleteFilmSoupBubble, canAddFilmSoupBubble } from './overlays/filmSoupOverlay.js';
 import { drawColorGel, hitTestColorGel, onDragColorGel, gelRotAnchor, gelCenterAnchor } from './overlays/colorGelOverlay.js';
 import { drawHalftone, hitTestHalftone, onDragHalftone, htRotAnchor, htCenterAnchor } from './overlays/halftoneOverlay.js';
+import { drawWrinkle, hitTestWrinkle, onDragWrinkle, wrinkleRotAnchor, wrinkleCenterAnchor } from './overlays/wrinkleOverlay.js';
+import { drawCaustics, hitTestCaustics, onDragCaustics, causticsRotAnchor } from './overlays/causticsOverlay.js';
 import { drawResin, hitTestResin, onDragResin } from './overlays/resinOverlay.js';
 import { drawGlassBlob, hitTestGlassBlob, onDragGlassBlob } from './overlays/glassBlobOverlay.js';
 import { drawCut, hitTestCut, onDragCut, resetCutVertices } from './overlays/cutOverlay.js';
@@ -108,6 +110,8 @@ onStackChange((key) => {
     if (state.mode === 'tunnel')       drawTunnelOverlay(inst.params);
     if (state.mode === 'colorGel')     drawColorGel(inst.params);
     if (state.mode === 'halftone')     drawHalftone(inst.params);
+    if (state.mode === 'wrinkle')      drawWrinkle(inst.params);
+    if (state.mode === 'caustics')     drawCaustics(inst.params);
     if (state.mode === 'resin')        drawResin(inst.params);
     if (state.mode === 'glassBlob')    drawGlassBlob(inst.params);
     if (state.mode === 'cut') {
@@ -362,6 +366,34 @@ export function hideHalftoneOverlay() {
     if (state.mode === 'halftone') _hideActive();
 }
 
+export function showWrinkleOverlay(inst) {
+    state.shapeKey   = 'wrinkleFadeShape';
+    state.wKey       = 'wrinkleFadeW';
+    state.hKey       = 'wrinkleFadeH';
+    state.angleKey   = 'wrinkleFadeAngle';
+    state.enabledKey = 'wrinkleFadeEnabled';
+    _activate('wrinkle', inst, 'wrinkleFadeX', 'wrinkleFadeY');
+    drawWrinkle(inst.params);
+}
+
+export function hideWrinkleOverlay() {
+    if (state.mode === 'wrinkle') _hideActive();
+}
+
+export function showCausticsOverlay(inst) {
+    state.shapeKey   = 'causticsFadeShape';
+    state.wKey       = 'causticsFadeW';
+    state.hKey       = 'causticsFadeH';
+    state.angleKey   = 'causticsFadeAngle';
+    state.enabledKey = 'causticsFadeEnabled';
+    _activate('caustics', inst, 'causticsFadeX', 'causticsFadeY');
+    drawCaustics(inst.params);
+}
+
+export function hideCausticsOverlay() {
+    if (state.mode === 'caustics') _hideActive();
+}
+
 export function hideColorGelOverlay() {
     if (state.mode === 'colorGel') _hideActive();
 }
@@ -585,6 +617,8 @@ function getCursorForMode(mode, h) {
         }
         case 'colorGel':
         case 'halftone':
+        case 'wrinkle':
+        case 'caustics':
             return (h && h.startsWith('line')) ? 'grab'
                 : h === 'center' ? 'grab'
                 : h === 'gradRot' ? 'crosshair'
@@ -632,6 +666,8 @@ function getCursorForMode(mode, h) {
 const HIT_FNS = {
     colorGel:       hitTestColorGel,
     halftone:       hitTestHalftone,
+    wrinkle:        hitTestWrinkle,
+    caustics:       hitTestCaustics,
     tunnel:         hitTestTunnel,
     mesh:           hitTestMesh,
     drawTool:       hitTestDrawTool,
@@ -658,6 +694,8 @@ const HIT_FNS = {
 const DRAG_FNS = {
     colorGel:       onDragColorGel,
     halftone:       onDragHalftone,
+    wrinkle:        onDragWrinkle,
+    caustics:       onDragCaustics,
     tunnel:         onDragTunnel,
     mesh:           onDragMesh,
     drawTool:       onDragDrawTool,
@@ -683,6 +721,8 @@ const DRAG_FNS = {
 const DRAW_FNS = {
     colorGel:       drawColorGel,
     halftone:       drawHalftone,
+    wrinkle:        drawWrinkle,
+    caustics:       drawCaustics,
     tunnel:         drawTunnelOverlay,
     mesh:           drawMeshOverlay,
     drawTool:       drawDrawTool,
@@ -854,6 +894,28 @@ function onDown(e) {
             : htRotAnchor(p2, mx2, my2, W2, H2);
     }
 
+    // Wrinkle: same as Halftone — capture the rotation start angle / grab offset.
+    if (state.mode === 'wrinkle' && (h === 'gradRot' || h === 'center')) {
+        const rect2 = canvas.getBoundingClientRect();
+        const inst2 = getStack().find(i => i.id === state.instId);
+        const p2    = inst2?.params ?? {};
+        const mx2   = e.clientX - rect2.left, my2 = e.clientY - rect2.top;
+        const W2    = uiOverlay.width, H2 = uiOverlay.height;
+        state.dragAnchor = (h === 'center')
+            ? wrinkleCenterAnchor(p2, mx2, my2, W2, H2)
+            : wrinkleRotAnchor(p2, mx2, my2, W2, H2);
+    }
+
+    // Caustics: capture the rotation start angle (the line grab is lazy via applyGrab).
+    if (state.mode === 'caustics' && h === 'gradRot') {
+        const rect2 = canvas.getBoundingClientRect();
+        const inst2 = getStack().find(i => i.id === state.instId);
+        const p2    = inst2?.params ?? {};
+        const mx2   = e.clientX - rect2.left, my2 = e.clientY - rect2.top;
+        const W2    = uiOverlay.width, H2 = uiOverlay.height;
+        state.dragAnchor = causticsRotAnchor(p2, mx2, my2, W2, H2);
+    }
+
     // Special dragAnchor setup for text box drags. Corners need it too: with
     // Lock Angles on they resize against the corner positions at drag start.
     if (state.mode === 'text' && (h === 'center' || h === 'rot'
@@ -922,15 +984,37 @@ function onDrag(e) {
     const inst = getStack().find(i => i.id === state.instId);
     if (!inst) return;
 
+    // Fade region move — standalone Fade tool ('center') and every embedded 'fadeCenter'.
+    // Grab-offset so the box moves relative to the grab point instead of snapping its
+    // center to the cursor. Fade keys are <prefix>Fade{X,Y}, derivable from state.wKey.
+    const isFadeMove = state.handle === 'fadeCenter'
+        || (state.mode === 'fade' && state.handle === 'center');
+    if (isFadeMove && state.wKey) {
+        const base = state.wKey.slice(0, -1);        // '<prefix>Fade'
+        const xk = base + 'X', yk = base + 'Y';
+        const W = uiOverlay.width, H = uiOverlay.height;
+        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        const cx = (0.5 + (inst.params[xk] ?? 0) / 100) * W;
+        const cy = (0.5 - (inst.params[yk] ?? 0) / 100) * H;
+        const [gx, gy] = applyGrab(cx, cy, mx, my);
+        setInstanceParam(state.instId, xk, Math.round(Math.max(-50, Math.min(50,  (gx / W - 0.5) * 100))));
+        setInstanceParam(state.instId, yk, Math.round(Math.max(-50, Math.min(50, -(gy / H - 0.5) * 100))));
+        return;
+    }
+
     const dragFn = DRAG_FNS[state.mode];
     if (dragFn) {
         dragFn(e, inst, rect);
     } else {
-        // Generic center drag for modes with no special drag logic (chroma, matrixRain, corrupted)
-        const x = Math.round(Math.max(-50, Math.min(50, ((e.clientX - rect.left) / rect.width  - 0.5) * 100)));
-        const y = Math.round(Math.max(-50, Math.min(50, -((e.clientY - rect.top)  / rect.height - 0.5) * 100)));
-        setInstanceParam(state.instId, state.xKey, x);
-        setInstanceParam(state.instId, state.yKey, y);
+        // Generic center drag for modes with no special drag logic (chroma, corrupted) —
+        // grab-offset so it doesn't snap the center under the cursor.
+        const W = rect.width, H = rect.height;
+        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        const cx = (0.5 + (inst.params[state.xKey] ?? 0) / 100) * W;
+        const cy = (0.5 - (inst.params[state.yKey] ?? 0) / 100) * H;
+        const [gx, gy] = applyGrab(cx, cy, mx, my);
+        setInstanceParam(state.instId, state.xKey, Math.round(Math.max(-50, Math.min(50,  (gx / W - 0.5) * 100))));
+        setInstanceParam(state.instId, state.yKey, Math.round(Math.max(-50, Math.min(50, -(gy / H - 0.5) * 100))));
     }
     // onStackChange fires → draw() called automatically
 }

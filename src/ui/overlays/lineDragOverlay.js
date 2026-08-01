@@ -1,7 +1,7 @@
 import { canvas } from '../../renderer/glstate.js';
 import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
-import { uiCtx, uiOverlay, syncSize, drawHandle, drawRotHandle, drawCornerHandle, HIT_RADIUS, isInsideFadeShape } from '../overlayUtils.js';
+import { uiCtx, uiOverlay, syncSize, drawHandle, drawRotHandle, drawCornerHandle, HIT_RADIUS, isInsideFadeShape, applyGrab } from '../overlayUtils.js';
 
 export function drawLineDrag(p) {
     syncSize();
@@ -155,8 +155,9 @@ export function onDragLineDrag(e, inst, rect) {
     const fcy = (0.5 - p.lineDragFadeY / 100) * H;
 
     if (state.handle === 'center') {
-        setInstanceParam(state.instId, 'lineDragX', Math.round(Math.max(0, Math.min(100, (mx / W) * 100))));
-        setInstanceParam(state.instId, 'lineDragY', Math.round(Math.max(0, Math.min(100, (my / H) * 100))));
+        const [gx, gy] = applyGrab(cx, cy, mx, my);
+        setInstanceParam(state.instId, 'lineDragX', Math.round(Math.max(0, Math.min(100, (gx / W) * 100))));
+        setInstanceParam(state.instId, 'lineDragY', Math.round(Math.max(0, Math.min(100, (gy / H) * 100))));
     } else if (state.handle === 'fadeCenter') {
         setInstanceParam(state.instId, 'lineDragFadeX', Math.round(Math.max(-50, Math.min(50,  (mx / W - 0.5) * 100))));
         setInstanceParam(state.instId, 'lineDragFadeY', Math.round(Math.max(-50, Math.min(50, -(my / H - 0.5) * 100))));

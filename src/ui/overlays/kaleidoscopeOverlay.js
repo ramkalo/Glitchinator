@@ -1,7 +1,7 @@
 import { canvas } from '../../renderer/glstate.js';
 import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
-import { uiCtx, uiOverlay, syncSize, drawHandle, drawRotHandle, drawCornerHandle, HIT_RADIUS } from '../overlayUtils.js';
+import { uiCtx, uiOverlay, syncSize, drawHandle, drawRotHandle, drawCornerHandle, HIT_RADIUS, applyGrab } from '../overlayUtils.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -271,8 +271,9 @@ export function onDragKaleidoscope(e, inst, rect) {
         const cx = (0.5 + p.kMirrorX / 100) * W;
         const cy = (0.5 - p.kMirrorY / 100) * H;
         if (h === 'center') {
-            setInstanceParam(state.instId, 'kMirrorX', Math.round(Math.max(-50, Math.min(50,  (mx / W - 0.5) * 100))));
-            setInstanceParam(state.instId, 'kMirrorY', Math.round(Math.max(-50, Math.min(50, -(my / H - 0.5) * 100))));
+            const [gx, gy] = applyGrab(cx, cy, mx, my);
+            setInstanceParam(state.instId, 'kMirrorX', Math.round(Math.max(-50, Math.min(50,  (gx / W - 0.5) * 100))));
+            setInstanceParam(state.instId, 'kMirrorY', Math.round(Math.max(-50, Math.min(50, -(gy / H - 0.5) * 100))));
         } else if (h === 'lineRot') {
             // Handle is at angle+90° from center; subtract 90° to get line angle
             let deg = Math.atan2(my - cy, mx - cx) * 180 / Math.PI - 90;
@@ -287,8 +288,9 @@ export function onDragKaleidoscope(e, inst, rect) {
         const cx = (0.5 + p.kSymX / 100) * W;
         const cy = (0.5 - p.kSymY / 100) * H;
         if (h === 'center') {
-            setInstanceParam(state.instId, 'kSymX', Math.round(Math.max(-50, Math.min(50,  (mx / W - 0.5) * 100))));
-            setInstanceParam(state.instId, 'kSymY', Math.round(Math.max(-50, Math.min(50, -(my / H - 0.5) * 100))));
+            const [gx, gy] = applyGrab(cx, cy, mx, my);
+            setInstanceParam(state.instId, 'kSymX', Math.round(Math.max(-50, Math.min(50,  (gx / W - 0.5) * 100))));
+            setInstanceParam(state.instId, 'kSymY', Math.round(Math.max(-50, Math.min(50, -(gy / H - 0.5) * 100))));
         } else if (h === 'symTip') {
             // Negate Y to convert screen-space angle to GLSL UV-space angle (Y is flipped)
             let deg = Math.atan2(-(my - cy), mx - cx) * 180 / Math.PI;
@@ -300,8 +302,9 @@ export function onDragKaleidoscope(e, inst, rect) {
     // Kaleidoscope mode
     const { cx, cy } = kalCenter(p);
     if (h === 'center') {
-        setInstanceParam(state.instId, 'kKalCenterX', Math.round(Math.max(-50, Math.min(50,  (mx / W - 0.5) * 100))));
-        setInstanceParam(state.instId, 'kKalCenterY', Math.round(Math.max(-50, Math.min(50, -(my / H - 0.5) * 100))));
+        const [gx, gy] = applyGrab(cx, cy, mx, my);
+        setInstanceParam(state.instId, 'kKalCenterX', Math.round(Math.max(-50, Math.min(50,  (gx / W - 0.5) * 100))));
+        setInstanceParam(state.instId, 'kKalCenterY', Math.round(Math.max(-50, Math.min(50, -(gy / H - 0.5) * 100))));
     } else if (h === 'rotation') {
         let deg = 90 - Math.atan2(my - cy, mx - cx) * 180 / Math.PI;
         if (deg > 180)  deg -= 360;

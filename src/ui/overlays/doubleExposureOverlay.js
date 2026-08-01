@@ -1,7 +1,7 @@
 import { canvas } from '../../renderer/glstate.js';
 import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
-import { uiCtx, uiOverlay, syncSize, drawHandle, drawRotHandle, drawCornerHandle, HIT_RADIUS, isInsideFadeShape } from '../overlayUtils.js';
+import { uiCtx, uiOverlay, syncSize, drawHandle, drawRotHandle, drawCornerHandle, HIT_RADIUS, isInsideFadeShape, applyGrab } from '../overlayUtils.js';
 
 function getFadeHandlePositions(p, fcx, fcy, W, H) {
     const shape = p[state.shapeKey] ?? 'ellipse';
@@ -136,8 +136,9 @@ export function onDragDoubleExposure(e, inst, rect) {
         setInstanceParam(state.instId, 'doubleExposureTexX', Math.round(Math.max(-100, Math.min(100,  (mx / W - 0.5) * 100))));
         setInstanceParam(state.instId, 'doubleExposureTexY', Math.round(Math.max(-100, Math.min(100, -(my / H - 0.5) * 100))));
     } else if (state.handle === 'center') {
-        setInstanceParam(state.instId, state.xKey, Math.round(Math.max(-50, Math.min(50,  (mx / W - 0.5) * 100))));
-        setInstanceParam(state.instId, state.yKey, Math.round(Math.max(-50, Math.min(50, -(my / H - 0.5) * 100))));
+        const [gx, gy] = applyGrab(fcx, fcy, mx, my);
+        setInstanceParam(state.instId, state.xKey, Math.round(Math.max(-50, Math.min(50,  (gx / W - 0.5) * 100))));
+        setInstanceParam(state.instId, state.yKey, Math.round(Math.max(-50, Math.min(50, -(gy / H - 0.5) * 100))));
     } else if (state.handle === 'edgeW') {
         setInstanceParam(state.instId, state.wKey, Math.round(Math.max(1, Math.min(200, Math.abs(mx - fcx) / (W / 2) * 100))));
     } else if (state.handle === 'edgeH') {

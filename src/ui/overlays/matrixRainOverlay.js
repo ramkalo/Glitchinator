@@ -1,7 +1,7 @@
 import { canvas } from '../../renderer/glstate.js';
 import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
-import { uiCtx, uiOverlay, syncSize, drawHandle, drawRotHandle, drawCornerHandle, HIT_RADIUS, isInsideFadeShape } from '../overlayUtils.js';
+import { uiCtx, uiOverlay, syncSize, drawHandle, drawRotHandle, drawCornerHandle, HIT_RADIUS, isInsideFadeShape, applyGrab } from '../overlayUtils.js';
 
 export function drawMatrixRain(p) {
     syncSize();
@@ -115,8 +115,10 @@ export function onDragMatrixRain(e, inst, rect) {
     const fcy = (0.5 - p.matrixRainFadeY / 100) * H;
 
     if (state.handle === 'center') {
-        setInstanceParam(state.instId, 'matrixRainX', Math.round(Math.max(-50, Math.min(50,  (mx / W - 0.5) * 100))));
-        setInstanceParam(state.instId, 'matrixRainY', Math.round(Math.max(-50, Math.min(50, -(my / H - 0.5) * 100))));
+        const cx = (0.5 + p.matrixRainX / 100) * W, cy = (0.5 - p.matrixRainY / 100) * H;
+        const [gx, gy] = applyGrab(cx, cy, mx, my);
+        setInstanceParam(state.instId, 'matrixRainX', Math.round(Math.max(-50, Math.min(50,  (gx / W - 0.5) * 100))));
+        setInstanceParam(state.instId, 'matrixRainY', Math.round(Math.max(-50, Math.min(50, -(gy / H - 0.5) * 100))));
     } else if (state.handle === 'fadeCenter') {
         setInstanceParam(state.instId, 'matrixRainFadeX', Math.round(Math.max(-50, Math.min(50,  (mx / W - 0.5) * 100))));
         setInstanceParam(state.instId, 'matrixRainFadeY', Math.round(Math.max(-50, Math.min(50, -(my / H - 0.5) * 100))));

@@ -1,6 +1,6 @@
 import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
-import { uiCtx, uiOverlay, syncSize, drawEllipseOrRect, hitTestEllipseHandles } from '../overlayUtils.js';
+import { uiCtx, uiOverlay, syncSize, drawEllipseOrRect, hitTestEllipseHandles, applyGrab } from '../overlayUtils.js';
 
 export function drawVignette(p) {
     syncSize();
@@ -34,8 +34,9 @@ export function onDragVignette(e, inst, rect) {
     const cy = (0.5 - p.vignetteCenterY / 100) * H;
 
     if (state.handle === 'center') {
-        setInstanceParam(state.instId, 'vignetteCenterX', Math.round(Math.max(-50, Math.min(50,  (mx / W - 0.5) * 100))));
-        setInstanceParam(state.instId, 'vignetteCenterY', Math.round(Math.max(-50, Math.min(50, -(my / H - 0.5) * 100))));
+        const [gx, gy] = applyGrab(cx, cy, mx, my);
+        setInstanceParam(state.instId, 'vignetteCenterX', Math.round(Math.max(-50, Math.min(50,  (gx / W - 0.5) * 100))));
+        setInstanceParam(state.instId, 'vignetteCenterY', Math.round(Math.max(-50, Math.min(50, -(gy / H - 0.5) * 100))));
     } else if (state.handle === 'edgeW') {
         const ang  = p.vignetteAngle * Math.PI / 180;
         const proj = (mx - cx) * Math.cos(ang) + (my - cy) * Math.sin(ang);

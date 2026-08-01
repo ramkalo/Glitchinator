@@ -7,6 +7,18 @@ export const uiCtx     = uiOverlay.getContext('2d');
 
 export const HIT_RADIUS = 18;
 
+// Grab-offset dragging: on the first drag frame this captures the offset between the
+// object's current center (cx,cy, screen px) and the cursor (mx,my), then returns the
+// cursor adjusted by that offset so the object moves relative to where it was grabbed
+// instead of snapping its center under the cursor. Compatible with overlays that seed a
+// { grabDX, grabDY } anchor in onDown — it just uses theirs.
+export function applyGrab(cx, cy, mx, my) {
+    const a = state.dragAnchor;
+    if (a && a.grabDX !== undefined) return [mx + a.grabDX, my + a.grabDY];
+    state.dragAnchor = { grabDX: cx - mx, grabDY: cy - my };
+    return [cx, cy];
+}
+
 export function syncSize() {
     const r = canvas.getBoundingClientRect();
     uiOverlay.width  = r.width;

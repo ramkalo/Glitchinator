@@ -29,6 +29,8 @@ import { textEffect }            from './text.js';
 import { transformEffect }       from './transform.js';
 import { tunnelEffect }          from './tunnel.js';
 import { viewportEffect }        from './viewport.js';
+import { wrinkleEffect }         from './wrinkle.js';
+import { causticsEffect }        from './caustics.js';
 
 const viewportEntryEffect = {
     name: 'viewportEntry',
@@ -150,6 +152,8 @@ export const EFFECTS = [
     tunnelEffect,
     glassBlobEffect,
     cutEffect,
+    wrinkleEffect,
+    causticsEffect,
 ];
 
 for (const effect of EFFECTS) validateEffect(effect);
@@ -231,6 +235,8 @@ export const EFFECT_CATALOG = [
     { name: 'tunnel',       label: 'Tunnel',               category: 'Overlay', description: 'Repeating shapes along a bezier path creating a tunnel illusion' },
     { name: 'glassBlob',    label: 'Glass Blob',           category: 'Overlay', description: 'A single glassy droplet you place, size and shape — refraction, highlight & color' },
     { name: 'cut',          label: 'Cut Out',              category: 'Overlay', description: 'Cut an ellipse/rectangle/triangle/polygon region out as a movable layer' },
+    { name: 'wrinkle',      label: 'Wrinkle',              category: 'Overlay', description: 'Cellophane wrap / ripple overlay with refraction and ridge sheen' },
+    { name: 'caustics',     label: 'Caustics',             category: 'Overlay', description: 'Underwater light caustics — the bright net of pool-bottom light lines' },
 
     // ── Blend ──
     { name: 'doubleExposure', label: 'Double Exposure',      category: 'Blend',   description: 'Blend two images together' },

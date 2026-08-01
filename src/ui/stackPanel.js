@@ -5,7 +5,7 @@ import { buildEffectBody, labelPreviewText } from './stackControls.js';
 import { blitOriginalToScreen } from '../renderer/webgl.js';
 import { processImageImmediate } from '../renderer/pipeline.js';
 import { originalImage } from '../renderer/glstate.js';
-import { showFadeOverlay, hideFadeOverlay, showCropOverlay, hideCropOverlay, showViewportOverlay, hideViewportOverlay, showMatrixRainOverlay, hideMatrixRainOverlay, showLineDragOverlay, hideLineDragOverlay, showChromaOverlay, hideChromaOverlay, showVignetteOverlay, hideVignetteOverlay, showCorruptedOverlay, hideCorruptedOverlay, showCRTCurvatureOverlay, hideCRTCurvatureOverlay, showTextOverlay, hideTextOverlay, showDoubleExposureOverlay, hideDoubleExposureOverlay, showShapeStickerOverlay, hideShapeStickerOverlay, showKaleidoscopeOverlay, hideKaleidoscopeOverlay, showDigitalSmearOverlay, hideDigitalSmearOverlay, showDrawToolOverlay, hideDrawToolOverlay, showMeshOverlay, hideMeshOverlay, showTunnelOverlay, hideTunnelOverlay, showFilmSoupOverlay, hideFilmSoupOverlay, showColorGelOverlay, hideColorGelOverlay, showHalftoneOverlay, hideHalftoneOverlay, showResinOverlay, hideResinOverlay, showGlassBlobOverlay, hideGlassBlobOverlay, showCutOverlay, hideCutOverlay } from './canvasPicker.js';
+import { showFadeOverlay, hideFadeOverlay, showCropOverlay, hideCropOverlay, showViewportOverlay, hideViewportOverlay, showMatrixRainOverlay, hideMatrixRainOverlay, showLineDragOverlay, hideLineDragOverlay, showChromaOverlay, hideChromaOverlay, showVignetteOverlay, hideVignetteOverlay, showCorruptedOverlay, hideCorruptedOverlay, showCRTCurvatureOverlay, hideCRTCurvatureOverlay, showTextOverlay, hideTextOverlay, showDoubleExposureOverlay, hideDoubleExposureOverlay, showShapeStickerOverlay, hideShapeStickerOverlay, showKaleidoscopeOverlay, hideKaleidoscopeOverlay, showDigitalSmearOverlay, hideDigitalSmearOverlay, showDrawToolOverlay, hideDrawToolOverlay, showMeshOverlay, hideMeshOverlay, showTunnelOverlay, hideTunnelOverlay, showFilmSoupOverlay, hideFilmSoupOverlay, showColorGelOverlay, hideColorGelOverlay, showHalftoneOverlay, hideHalftoneOverlay, showWrinkleOverlay, hideWrinkleOverlay, showCausticsOverlay, hideCausticsOverlay, showResinOverlay, hideResinOverlay, showGlassBlobOverlay, hideGlassBlobOverlay, showCutOverlay, hideCutOverlay } from './canvasPicker.js';
 
 let _expandedId = null;
 
@@ -121,7 +121,7 @@ function makeCatalogItem(entry) {
         <button class="catalog-item-add" title="Add ${entry.label}">+</button>
     `;
     item.querySelector('.catalog-item-add').addEventListener('click', () => {
-        const PALETTE_DEPENDENT = new Set(['colorRemap', 'matrixRain', 'shapeSticker', 'text', 'corrupted', 'drawTool', 'mesh', 'tunnel', 'colorGel', 'halftone']);
+        const PALETTE_DEPENDENT = new Set(['colorRemap', 'matrixRain', 'shapeSticker', 'text', 'corrupted', 'drawTool', 'mesh', 'tunnel', 'colorGel', 'halftone', 'wrinkle', 'caustics']);
         saveState();
         if (PALETTE_DEPENDENT.has(entry.name) && !getStack().some(i => i.effectName === 'colorPalette')) {
             addEffect('colorPalette');
@@ -355,6 +355,8 @@ export function renderStackList() {
     if (newEffect !== 'filmSoup')       hideFilmSoupOverlay();
     if (newEffect !== 'colorGel')       hideColorGelOverlay();
     if (newEffect !== 'halftone')       hideHalftoneOverlay();
+    if (newEffect !== 'wrinkle')        hideWrinkleOverlay();
+    if (newEffect !== 'caustics')       hideCausticsOverlay();
     if (newEffect !== 'resin')          hideResinOverlay();
     if (newEffect !== 'glassBlob')      hideGlassBlobOverlay();
     if (newEffect !== 'cut')            hideCutOverlay();
@@ -387,6 +389,8 @@ export function renderStackList() {
     else if (newEffect === 'filmSoup')      showFilmSoupOverlay(expandedInst);
     else if (newEffect === 'colorGel')      showColorGelOverlay(expandedInst);
     else if (newEffect === 'halftone')      showHalftoneOverlay(expandedInst);
+    else if (newEffect === 'wrinkle')       showWrinkleOverlay(expandedInst);
+    else if (newEffect === 'caustics')      showCausticsOverlay(expandedInst);
     else if (newEffect === 'resin')         showResinOverlay(expandedInst);
     else if (newEffect === 'glassBlob')     showGlassBlobOverlay(expandedInst);
     else if (newEffect === 'cut')           showCutOverlay(expandedInst);

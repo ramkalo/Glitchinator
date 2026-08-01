@@ -1,7 +1,7 @@
 import { canvas } from '../../renderer/glstate.js';
 import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
-import { uiCtx, uiOverlay, syncSize, drawHandle, drawRotHandle, drawCornerHandle, HIT_RADIUS, isInsideFadeShape } from '../overlayUtils.js';
+import { uiCtx, uiOverlay, syncSize, drawHandle, drawRotHandle, drawCornerHandle, HIT_RADIUS, isInsideFadeShape, applyGrab } from '../overlayUtils.js';
 
 function ssVertexScreenPositions(p) {
     const W = uiOverlay.width, H = uiOverlay.height;
@@ -388,16 +388,19 @@ export function onDragShapeSticker(e, inst, rect) {
     const cosA = Math.cos(angle), sinA = Math.sin(angle);
 
     if (state.handle === 'center') {
-        setInstanceParam(state.instId, 'shapeStickerX', Math.round(Math.max(-50, Math.min(50, (mx / W - 0.5) * 100)) * 100) / 100);
-        setInstanceParam(state.instId, 'shapeStickerY', Math.round(Math.max(-50, Math.min(50, -(my / H - 0.5) * 100)) * 100) / 100);
+        const [gx, gy] = applyGrab(cx, cy, mx, my);
+        setInstanceParam(state.instId, 'shapeStickerX', Math.round(Math.max(-50, Math.min(50, (gx / W - 0.5) * 100)) * 100) / 100);
+        setInstanceParam(state.instId, 'shapeStickerY', Math.round(Math.max(-50, Math.min(50, -(gy / H - 0.5) * 100)) * 100) / 100);
     } else if (state.handle === 'rot') {
         let deg = Math.atan2(my - cy, mx - cx) * 180 / Math.PI + 90;
         if (deg > 180)  deg -= 360;
         if (deg < -180) deg += 360;
         setInstanceParam(state.instId, 'shapeStickerAngle', Math.round(deg));
     } else if (state.handle === 'grab_center') {
-        setInstanceParam(state.instId, 'shapeStickerGrabX', Math.round(Math.max(-50, Math.min(50, (mx / W - 0.5) * 100)) * 100) / 100);
-        setInstanceParam(state.instId, 'shapeStickerGrabY', Math.round(Math.max(-50, Math.min(50, -(my / H - 0.5) * 100)) * 100) / 100);
+        const gcx = (0.5 + p.shapeStickerGrabX / 100) * W, gcy = (0.5 - p.shapeStickerGrabY / 100) * H;
+        const [gx, gy] = applyGrab(gcx, gcy, mx, my);
+        setInstanceParam(state.instId, 'shapeStickerGrabX', Math.round(Math.max(-50, Math.min(50, (gx / W - 0.5) * 100)) * 100) / 100);
+        setInstanceParam(state.instId, 'shapeStickerGrabY', Math.round(Math.max(-50, Math.min(50, -(gy / H - 0.5) * 100)) * 100) / 100);
     } else if (state.handle === 'grab_rot') {
         const gcx = (0.5 + (p.shapeStickerGrabX ?? 30) / 100) * W;
         const gcy = (0.5 - (p.shapeStickerGrabY ?? 30) / 100) * H;
