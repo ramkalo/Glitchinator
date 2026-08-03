@@ -60,7 +60,7 @@ export function buildHueGridControl(inst, { onRebuild } = {}) {
     const canvas = document.createElement('canvas');
     canvas.width = SIZE;
     canvas.height = SIZE;
-    canvas.style.cssText = 'width:100%;aspect-ratio:1/1;display:block;border-radius:4px;border:1px solid var(--border);touch-action:none;cursor:pointer;';
+    canvas.style.cssText = 'width:100%;aspect-ratio:1/1;display:block;border-radius:0;border:1px solid var(--border);touch-action:none;cursor:pointer;';
     group.appendChild(canvas);
     const ctx = canvas.getContext('2d');
 

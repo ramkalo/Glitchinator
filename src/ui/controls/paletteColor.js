@@ -144,7 +144,7 @@ export function buildPaletteSwatchControl(inst, key, schema, { onRebuild } = {})
         const cell = document.createElement('button');
         cell.type = 'button';
         cell.style.cssText =
-            'width:20px;height:20px;padding:0;border-radius:3px;border:1px solid var(--border);' +
+            'width:20px;height:20px;padding:0;border-radius:0;border:1px solid var(--border);' +
             'cursor:pointer;flex:0 0 auto;box-sizing:border-box;font-size:11px;line-height:1;' +
             'display:flex;align-items:center;justify-content:center;background:var(--bg-input);';
         cell.addEventListener('click', () => { if (value === 'custom' && colorInput) colorInput.click(); select(value); });

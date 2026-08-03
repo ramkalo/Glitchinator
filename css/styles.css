@@ -46,14 +46,14 @@
     --bg-dark: #1a1a1a;
     --bg-panel: #242424;
     --bg-input: #2a2a2a;
-    --accent: #888888;
+    --accent: #a6a6a6;
     --accent-hover: #aaaaaa;
     --text: #e0e0e0;
-    --text-dim: #666666;
-    --border: #333333;
+    --text-dim: #a6a6a6;
+    --border: #545454;
     --success: #888888;
     --slider-track: #4a4a4a;
-    --slider-fill: #b8b8b8;
+    --slider-fill: #6e6e6e;
 }
 
 body {
@@ -461,16 +461,16 @@ input[type="range"] {
     background: var(--slider-track);
     border: 1px solid var(--border);
     height: 8px;
-    border-radius: 4px;
+    border-radius: 0;
     cursor: pointer;
 }
 
 input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 15px;
-    height: 15px;
+    width: 12px;
+    height: 12px;
     background: var(--text);
-    border: 1px solid var(--bg-dark);
+    border: none;
     border-radius: 0;
     transform: rotate(45deg);
     cursor: pointer;
@@ -482,10 +482,10 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 input[type="range"]::-moz-range-thumb {
-    width: 15px;
-    height: 15px;
+    width: 12px;
+    height: 12px;
     background: var(--text);
-    border: 1px solid var(--bg-dark);
+    border: none;
     border-radius: 0;
     transform: rotate(45deg);
     cursor: pointer;
@@ -561,13 +561,13 @@ input[type="range"]::-moz-range-thumb {
 
 @media (max-width: 900px) {
     input[type="range"]::-webkit-slider-thumb {
-        width: 24px;
-        height: 24px;
+        width: 20px;
+        height: 20px;
     }
 
     input[type="range"]::-moz-range-thumb {
-        width: 24px;
-        height: 24px;
+        width: 20px;
+        height: 20px;
     }
 
     .slider-btn { width: 30px; height: 30px; font-size: 1rem; }
@@ -581,7 +581,7 @@ input[type="number"], input[type="text"] {
     padding: 8px 10px;
     font-family: inherit;
     font-size: 0.85rem;
-    border-radius: 4px;
+    border-radius: 0;
     width: 80px;
 }
 
@@ -594,6 +594,25 @@ select {
     font-size: 0.85rem;
     border-radius: 0;
     cursor: pointer;
+}
+
+/* Native color swatches: square corners + the same faint thin border as everything else */
+input[type="color"] {
+    border-radius: 0;
+    border: 1px solid var(--border);
+    padding: 0;
+}
+input[type="color"]::-webkit-color-swatch-wrapper {
+    border-radius: 0;
+    padding: 0;
+}
+input[type="color"]::-webkit-color-swatch {
+    border-radius: 0;
+    border: none;
+}
+input[type="color"]::-moz-color-swatch {
+    border-radius: 0;
+    border: none;
 }
 
 input[type="number"]:focus, input[type="text"]:focus {
@@ -631,6 +650,50 @@ input[type="checkbox"]:checked::after {
     border-top: none;
     border-left: none;
     transform: rotate(45deg);
+}
+
+/* Sliding on/off switch (opt-in via .switch on the checkbox) */
+input[type="checkbox"].switch {
+    width: 42px;
+    height: 22px;
+    border: none;
+    border-radius: 0;
+    background: var(--border);   /* frame color; inner fill is the ::before layer */
+    clip-path: polygon(0 50%, 26% 0, 74% 0, 100% 50%, 74% 100%, 26% 100%);
+}
+input[type="checkbox"].switch::before {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    background: var(--bg-input);
+    clip-path: polygon(0 50%, 26% 0, 74% 0, 100% 50%, 74% 100%, 26% 100%);
+    transition: background 0.15s;
+}
+input[type="checkbox"].switch::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 11px;
+    transform: translateY(-50%);
+    /* quadrilateral diamond. Left/right point edges have slope h/w; the track's
+       end edges have slope (H/2)/(0.26·W)=11/10.92≈1, so h=w (square) matches. */
+    width: 10px;
+    height: 10px;
+    clip-path: polygon(0 50%, 50% 0, 100% 50%, 50% 100%);
+    background: var(--text-dim);
+    border: none;
+    z-index: 1;
+    transition: transform 0.15s, background 0.15s;
+}
+input[type="checkbox"].switch:checked {
+    background: var(--border);
+}
+input[type="checkbox"].switch:checked::before {
+    background: var(--accent);
+}
+input[type="checkbox"].switch:checked::after {
+    transform: translateY(-50%) translateX(10px);
+    background: #111;
 }
 
 .checkbox-label {
@@ -761,7 +824,7 @@ input[type="checkbox"]:checked::after {
     height: 40px;
     border: 3px solid rgba(255, 255, 255, 0.2);
     border-top-color: var(--accent);
-    border-radius: 50%;
+    border-radius: 0;
     animation: spin 0.75s linear infinite;
 }
 
@@ -900,7 +963,7 @@ input[type="checkbox"]:checked::after {
     padding: 10px;
     background: var(--bg-input);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 0;
     margin-bottom: 8px;
 }
 
@@ -1007,7 +1070,7 @@ input[type="checkbox"]:checked::after {
 
 ::-webkit-scrollbar-thumb {
     background: var(--border);
-    border-radius: 4px;
+    border-radius: 0;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -1136,7 +1199,7 @@ input[type="checkbox"]:checked::after {
         /* Default: peek — 17vh visible above bottom */
         transform: translateY(calc(90vh - 17vh));
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        border-radius: 16px 16px 0 0;
+        border-radius: 0;
         border-top: none;
         border-left: none;
         z-index: 100;
@@ -1180,7 +1243,7 @@ input[type="checkbox"]:checked::after {
     .sheet-handle-bar {
         width: 40px;
         height: 5px;
-        border-radius: 3px;
+        border-radius: 0;
         background: rgba(255, 255, 255, 0.25);
         transition: background 0.15s;
     }
@@ -1214,7 +1277,7 @@ input[type="checkbox"]:checked::after {
         border: 1px solid #4ecca3;
         color: #4ecca3;
         padding: 8px 20px;
-        border-radius: 20px;
+        border-radius: 0;
         font-family: 'JetBrains Mono', 'Courier New', monospace;
         font-size: 14px;
         pointer-events: none;
@@ -1255,6 +1318,22 @@ input[type="checkbox"]:checked::after {
     input[type="checkbox"] {
         width: 24px;
         height: 24px;
+    }
+
+    input[type="checkbox"].switch {
+        width: 54px;
+        height: 28px;
+    }
+    input[type="checkbox"].switch::before {
+        inset: 2px;
+    }
+    input[type="checkbox"].switch::after {
+        width: 12px;
+        height: 12px;
+        left: 15px;
+    }
+    input[type="checkbox"].switch:checked::after {
+        transform: translateY(-50%) translateX(12px);
     }
     
     select {
@@ -1471,7 +1550,7 @@ input[type="checkbox"]:checked::after {
     position: relative;
     background: var(--bg-input);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 0;
     user-select: none;
     transition: border-color 0.15s, opacity 0.15s;
 }
@@ -1516,7 +1595,7 @@ input[type="checkbox"]:checked::after {
     gap: 8px;
     padding: 9px 10px;
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: 0;
 }
 
 .stack-item-body {
@@ -1746,7 +1825,7 @@ input[type="checkbox"]:checked::after {
     align-items: center;
     justify-content: space-between;
     padding: 5px 8px;
-    border-radius: 4px;
+    border-radius: 0;
     transition: background 0.15s;
     flex-shrink: 0;
 }

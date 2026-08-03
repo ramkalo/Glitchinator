@@ -26,15 +26,22 @@ let activeSliderGroup = null;
 let _paletteDragSrc = null; // { instId, index } while a palette swatch is being dragged
 
 // Paint an accent fill up to the thumb so the track position reads clearly.
+// Bipolar sliders (min < 0 < max) anchor the fill at their zero point and
+// extend outward toward the thumb; unipolar sliders fill from the left edge.
 // Skips sliders that own a custom gradient track (they set data-gradient="1").
 function updateSliderFill(range) {
     if (!range || range.dataset.gradient === '1') return;
     const min = parseFloat(range.min), max = parseFloat(range.max);
     const val = parseFloat(range.value);
-    const pct = max > min ? Math.max(0, Math.min(100, ((val - min) / (max - min)) * 100)) : 0;
+    if (!(max > min)) { range.style.background = 'var(--slider-track)'; return; }
+    const toPct = (v) => Math.max(0, Math.min(100, ((v - min) / (max - min)) * 100));
+    const valPct = toPct(val);
+    const anchorPct = (min < 0 && max > 0) ? toPct(0) : 0; // bipolar → fill from zero outward
+    const lo = Math.min(anchorPct, valPct), hi = Math.max(anchorPct, valPct);
     range.style.background =
-        `linear-gradient(90deg, var(--slider-fill) 0%, var(--slider-fill) ${pct}%,` +
-        ` var(--slider-track) ${pct}%, var(--slider-track) 100%)`;
+        `linear-gradient(90deg, var(--slider-track) 0%, var(--slider-track) ${lo}%,` +
+        ` var(--slider-fill) ${lo}%, var(--slider-fill) ${hi}%,` +
+        ` var(--slider-track) ${hi}%, var(--slider-track) 100%)`;
 }
 
 // A slider's numeric readout that becomes an editable input on click.
@@ -1394,6 +1401,7 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         wrapper.className = 'checkbox-label';
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
+        checkbox.className = 'switch';
         checkbox.checked = currentVal;
         checkbox.dataset.instParam = key;
         checkbox.addEventListener('change', () => {
@@ -1593,7 +1601,7 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         hexSpan.spellcheck = false;
         hexSpan.setAttribute('aria-label', `${label} hex`);
         hexSpan.style.cssText = 'font-size:0.7rem;font-family:monospace;color:var(--text-dim);'
-            + 'width:8ch;flex-shrink:0;padding:1px 2px;background:transparent;border:1px solid transparent;border-radius:3px;';
+            + 'width:8ch;flex-shrink:0;padding:1px 2px;background:transparent;border:1px solid transparent;border-radius:0;';
         hexSpan.addEventListener('focus', () => {
             hexSpan.style.borderColor = 'var(--border)';
             hexSpan.select();
@@ -1764,7 +1772,7 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
             infoBtn.className = 'btn';
             infoBtn.textContent = 'i';
             infoBtn.title = 'Formula help';
-            infoBtn.style.cssText = 'width:20px;height:20px;padding:0;border-radius:50%;font-size:0.7rem;font-style:italic;font-weight:700;flex-shrink:0;line-height:1;';
+            infoBtn.style.cssText = 'width:20px;height:20px;padding:0;border-radius:0;font-size:0.7rem;font-style:italic;font-weight:700;flex-shrink:0;line-height:1;';
             infoBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 document.querySelectorAll('.formula-info-popup').forEach(el => el.remove());
@@ -1775,7 +1783,7 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
                     'z-index:10000',
                     'background:var(--bg-2,#1a1a1a)',
                     'border:1px solid var(--border,#444)',
-                    'border-radius:6px',
+                    'border-radius:0',
                     'padding:12px 14px',
                     'font-size:0.78rem',
                     'line-height:1.6',

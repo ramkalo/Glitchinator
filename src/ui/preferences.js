@@ -4,7 +4,8 @@
 const STORAGE_KEY = 'bxtrxt-prefs';
 
 const defaults = {
-    uiSide: 'right', // 'right' | 'left'
+    uiSide: 'right',      // 'right' | 'left'
+    autoSwitchTab: true,  // jump to Current Effects when an effect is added
 };
 
 function load() {
@@ -29,9 +30,19 @@ function applyUiSide() {
     });
 }
 
+function applyAutoSwitch() {
+    document.querySelectorAll('#autoSwitchToggle .pref-seg-btn').forEach(btn => {
+        btn.classList.toggle('active', (btn.dataset.auto === 'on') === prefs.autoSwitchTab);
+    });
+}
+
+// Read a live preference value (prefs is mutated in place, so this stays current).
+export function getPref(key) { return prefs[key]; }
+
 // Apply persisted prefs to the DOM as early as possible (before modal wiring).
 export function applyPreferences() {
     applyUiSide();
+    applyAutoSwitch();
 }
 
 export function initPreferences() {
@@ -53,6 +64,17 @@ export function initPreferences() {
             prefs.uiSide = btn.dataset.side;
             save(prefs);
             applyUiSide();
+        });
+    }
+
+    const autoToggle = document.getElementById('autoSwitchToggle');
+    if (autoToggle) {
+        autoToggle.addEventListener('click', (e) => {
+            const btn = e.target.closest('.pref-seg-btn');
+            if (!btn) return;
+            prefs.autoSwitchTab = btn.dataset.auto === 'on';
+            save(prefs);
+            applyAutoSwitch();
         });
     }
 }

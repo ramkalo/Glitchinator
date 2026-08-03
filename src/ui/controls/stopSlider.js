@@ -47,12 +47,12 @@ export function buildStopSlider(inst, { label, stops, alwaysActive = [], resolve
     trackWrap.style.cssText = 'position:relative;height:20px;margin:4px 6px;';
 
     const trackBg = document.createElement('div');
-    trackBg.style.cssText = 'position:absolute;inset:0;border-radius:4px;border:1px solid var(--border);pointer-events:none;';
+    trackBg.style.cssText = 'position:absolute;inset:0;border-radius:0;border:1px solid var(--border);pointer-events:none;';
     trackWrap.appendChild(trackBg);
 
     const handles = stops.map((def) => {
         const h = document.createElement('div');
-        h.style.cssText = 'position:absolute;top:-2px;width:12px;height:24px;transform:translateX(-50%);border-radius:3px;border:2px solid rgba(255,255,255,0.5);cursor:ew-resize;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;user-select:none;box-sizing:border-box;';
+        h.style.cssText = 'position:absolute;top:-2px;width:12px;height:24px;transform:translateX(-50%);border-radius:0;border:2px solid rgba(255,255,255,0.5);cursor:ew-resize;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;user-select:none;box-sizing:border-box;';
         h.textContent = def.label;
         trackWrap.appendChild(h);
         return h;
@@ -135,7 +135,7 @@ export function buildStopSlider(inst, { label, stops, alwaysActive = [], resolve
 
     if (trackBar) {
         const bar = document.createElement('div');
-        bar.style.cssText = 'height:6px;border-radius:3px;border:1px solid var(--border);margin:2px 6px 4px;pointer-events:none;';
+        bar.style.cssText = 'height:6px;border-radius:0;border:1px solid var(--border);margin:2px 6px 4px;pointer-events:none;';
         bar.style.background = trackBar;
         row.appendChild(bar);
     }

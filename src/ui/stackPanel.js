@@ -1,6 +1,7 @@
 import { EFFECT_CATALOG, EFFECT_CATEGORIES, getEffect } from '../effects/registry.js';
 import { getStack, addEffect, removeEffect, moveEffect, duplicateEffect, setInstanceParam } from '../state/effectStack.js';
 import { saveState } from '../state/undo.js';
+import { getPref } from './preferences.js';
 import { buildEffectBody, labelPreviewText } from './stackControls.js';
 import { blitOriginalToScreen } from '../renderer/webgl.js';
 import { processImageImmediate } from '../renderer/pipeline.js';
@@ -128,8 +129,9 @@ function makeCatalogItem(entry) {
         }
         const inst = addEffect(entry.name);
         if (inst) _expandedId = inst.id;
-        // Jump to Current Effects so the freshly added effect is visible + expanded.
-        showTab('current');
+        // Jump to Current Effects so the freshly added effect is visible + expanded
+        // (unless the user disabled this in Preferences).
+        if (getPref('autoSwitchTab')) showTab('current');
         renderStackList();
     });
     return item;
