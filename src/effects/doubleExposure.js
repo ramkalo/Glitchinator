@@ -20,8 +20,8 @@ export const doubleExposureEffect = {
         ...fade.handleParams,
     ],
     uiGroups: [
-        fade.uiGroup,
         blend.uiGroup,
+        fade.uiGroup,
     ],
     params: {
         doubleExposureEnabled:     { default: false, label: 'Enable' },

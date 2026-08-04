@@ -279,8 +279,8 @@ export const shapeStickerEffect = {
                 keys: ['shapeStickerGrabX', 'shapeStickerGrabY', 'shapeStickerGrabW', 'shapeStickerGrabH', 'shapeStickerGrabAngle', 'shapeStickerGrabMode'],
             });
         }
-        groups.push(fade.uiGroup);
         groups.push(blend.uiGroup);
+        groups.push(fade.uiGroup);
         return groups;
     },
     canvas2d: applyShapeSticker,

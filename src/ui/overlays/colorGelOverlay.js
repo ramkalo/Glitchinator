@@ -1,8 +1,8 @@
 import { canvas } from '../../renderer/glstate.js';
 import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
-import { uiCtx, uiOverlay, syncSize, drawRotHandle, strokeAntLine, HIT_RADIUS, isInsideFadeShape } from '../overlayUtils.js';
-import { drawFadeShape, getFadeHandlePositions } from './fadeOverlay.js';
+import { uiCtx, uiOverlay, syncSize, drawRotHandle, strokeAntLine, HIT_RADIUS } from '../overlayUtils.js';
+import { drawFadeShape, getFadeHandlePositions, hitTestFadeVertices, isInsideFade } from './fadeOverlay.js';
 import { gelMode, gelCenterUv, gelCenterPx, gelAxisDir, gelSweepAngle,
          gelStopPos, activeGelStops } from '../../effects/colorGel.js';
 
@@ -151,15 +151,13 @@ export function hitTestColorGel(e) {
 
     if (p.colorGelFadeEnabled) {
         const [fcx, fcy] = fadeCenterPx(p, W, H);
+        const vHit = hitTestFadeVertices(p, mx, my, fcx, fcy, W, H);
+        if (vHit) return vHit;
         const { edgeW, edgeH, rotHandle } = getFadeHandlePositions(p, fcx, fcy, W, H);
         if (Math.hypot(mx - rotHandle[0], my - rotHandle[1]) <= HIT_RADIUS) return 'fadeRot';
-        if (Math.hypot(mx - edgeW[0],     my - edgeW[1])     <= HIT_RADIUS) return 'fadeEdgeW';
-        if (Math.hypot(mx - edgeH[0],     my - edgeH[1])     <= HIT_RADIUS) return 'fadeEdgeH';
-        const shape = p.colorGelFadeShape ?? 'ellipse';
-        const angle = (p.colorGelFadeAngle ?? 0) * Math.PI / 180;
-        const a = (p.colorGelFadeW / 100) * W / 2;
-        const b = (p.colorGelFadeH / 100) * H / 2;
-        if (isInsideFadeShape(mx, my, fcx, fcy, a, b, angle, shape !== 'ellipse')) return 'fadeCenter';
+        if (edgeW && Math.hypot(mx - edgeW[0], my - edgeW[1]) <= HIT_RADIUS) return 'fadeEdgeW';
+        if (edgeH && Math.hypot(mx - edgeH[0], my - edgeH[1]) <= HIT_RADIUS) return 'fadeEdgeH';
+        if (isInsideFade(p, mx, my, fcx, fcy, W, H)) return 'fadeCenter';
     }
 
     // The origin hub goes last so a fade handle sitting on top of it still wins.
@@ -254,18 +252,5 @@ export function onDragColorGel(e, inst, rect) {
         return;
     }
 
-    const [fcx, fcy] = fadeCenterPx(p, W, H);
-    if (handle === 'fadeCenter') {
-        setInstanceParam(state.instId, 'colorGelFadeX', Math.round(Math.max(-50, Math.min(50,  (mx / W - 0.5) * 100))));
-        setInstanceParam(state.instId, 'colorGelFadeY', Math.round(Math.max(-50, Math.min(50, -(my / H - 0.5) * 100))));
-    } else if (handle === 'fadeEdgeW') {
-        setInstanceParam(state.instId, 'colorGelFadeW', Math.round(Math.max(1, Math.min(200, Math.abs(mx - fcx) / (W / 2) * 100))));
-    } else if (handle === 'fadeEdgeH') {
-        setInstanceParam(state.instId, 'colorGelFadeH', Math.round(Math.max(1, Math.min(200, Math.abs(my - fcy) / (H / 2) * 100))));
-    } else if (handle === 'fadeRot') {
-        let deg = Math.atan2(my - fcy, mx - fcx) * 180 / Math.PI + 90;
-        if (deg > 180)  deg -= 360;
-        if (deg < -180) deg += 360;
-        setInstanceParam(state.instId, 'colorGelFadeAngle', Math.round(deg));
-    }
+    // Fade handles (fadeCenter/fadeEdge*/fadeRot/fadeV#) are dragged centrally in canvasPicker.
 }

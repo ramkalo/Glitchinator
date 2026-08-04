@@ -78,7 +78,7 @@ export const colorRemapEffect = {
             // (see stackControls.js); only the discrete selectors render here.
             groups.push({ keys: ['invertGridDim', 'invertGridAxis', 'invertGridOutput'] });
         }
-        groups.push(fade.uiGroup, blend.uiGroup);
+        groups.push(blend.uiGroup, fade.uiGroup);
         return groups;
     },
     params: {

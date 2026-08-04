@@ -5,6 +5,8 @@ import { uploadToTexture } from '../renderer/webgl.js';
 const fade  = buildFadeControl('halftone');
 const blend = buildBlendControl('halftone');
 
+const OPTIONAL_COLOR_OPTIONS = [['none', 'None'], ...STANDARD_COLOR_OPTIONS];
+
 const MODE_CODES  = { linear: 0, concentric: 1, dynamic: 2 };
 const SHAPE_CODES = { circle: 0, diamond: 1, ascii: 2 };
 const CURVE_CODES = { linear: 0, exp: 1, log: 2 };
@@ -81,7 +83,11 @@ function halftoneBindUniforms(gl, prog, p) {
                       0.5 - clampNum(p.halftoneCenterY, -50, 50, 0) / 100);
 
     const pal = p._activePalette;
-    set3v('htDotColor', htRgb(p.halftoneColor,   pal, '#000000'));
+    const dotLow  = htRgb(p.halftoneColor, pal, '#000000');
+    const dotHigh = (p.halftoneColorHigh && p.halftoneColorHigh !== 'none')
+        ? htRgb(p.halftoneColorHigh, pal, '#000000') : dotLow;
+    set3v('htDotColor',     dotLow);
+    set3v('htDotColorHigh', dotHigh);
     set3v('htBgColor',  htRgb(p.halftoneBgColor, pal, '#ffffff'));
 
     // Luminance remap stops (dynamic mode). Kept sorted by the stop slider.
@@ -132,7 +138,7 @@ export const halftoneEffect = {
     uiGroups: (p) => {
         const mode  = halftoneMode(p);
         const shape = p.halftoneShape ?? 'circle';
-        const keys  = ['halftoneMode', 'halftoneShape', 'halftoneColor',
+        const keys  = ['halftoneMode', 'halftoneShape', 'halftoneColor', 'halftoneColorHigh',
                        'halftoneBgColor', 'halftoneBgAlpha', 'halftoneCurve'];
         if (mode === 'dynamic') {
             keys.push('halftoneSizeLow', 'halftoneSizeHigh',
@@ -155,7 +161,8 @@ export const halftoneEffect = {
         halftoneShape:    { default: 'circle', label: 'Shape', options: [
             ['circle', 'Circle'], ['diamond', 'Diamond'], ['ascii', 'ASCII'],
         ] },
-        halftoneColor:    { default: 'palette0', type: 'paletteSelect', options: STANDARD_COLOR_OPTIONS, label: 'Dot Color' },
+        halftoneColor:     { default: 'palette0', type: 'paletteSelect', options: STANDARD_COLOR_OPTIONS, label: 'Dot Color (Low)' },
+        halftoneColorHigh: { default: 'none',     type: 'paletteSelect', options: OPTIONAL_COLOR_OPTIONS, label: 'Dot Color (High)' },
         halftoneBgColor:  { default: 'palette7', type: 'paletteSelect', options: STANDARD_COLOR_OPTIONS, label: 'Background' },
         halftoneBgAlpha:  { default: 0, min: 0, max: 100, label: 'BG Transparency' },
         halftoneCurve:    { default: 'linear', label: 'Gradient', options: [
@@ -214,6 +221,7 @@ uniform int   htCurve;     // 0 linear, 1 exp, 2 log
 uniform float htAngle;     // radians
 uniform vec2  htCenter;    // gradient origin, fraction of resolution, y-down
 uniform vec3  htDotColor;
+uniform vec3  htDotColorHigh;
 uniform vec3  htBgColor;
 uniform float halftoneBgAlpha;   // 0..100
 
@@ -289,18 +297,20 @@ void main() {
     // y-down pixel position, the gradient parameter t, and the coherent cell
     // fraction f (both components in [-0.5, 0.5], isotropic so dots stay round).
     vec2 pix = vec2(vUV.x, 1.0 - vUV.y) * uResolution;
-    float t, S, D;
+    float t, S, D, u;
     vec2  f;
+    int   cellIdx;
 
     if (htMode == 2) {
         // dynamic: low-frequency luminance keeps a plain lattice coherent
         float lum = htRegionalLum(vUV);
         t = htRemapLum(lum);
         if (halftoneFlipLum == 1) t = 1.0 - t;
-        float u = htShapeT(t);
+        u = htShapeT(t);
         S = max(1.0, mix(halftoneSpaceLow, halftoneSpaceHigh, u));
         D = mix(halftoneSizeLow, halftoneSizeHigh, u);
         f = fract(pix / S) - 0.5;
+        cellIdx = int(floor(pix.x / S));
     } else if (htMode == 0) {
         // linear: lattice aligned to the axis, spacing warped along it
         vec2 n    = vec2(cos(htAngle), -sin(htAngle));   // y-down
@@ -310,18 +320,19 @@ void main() {
         float b   = dot(rel, perp);
         float TT  = max(1.0, abs(n.x) * uResolution.x + abs(n.y) * uResolution.y);
         t = clamp(a / TT + 0.5, 0.0, 1.0);
-        float u = htShapeT(t);
+        u = htShapeT(t);
         S = max(1.0, mix(halftoneSpaceMin, halftoneSpaceMax, u));
         D = mix(halftoneSizeMin, halftoneSizeMax, u);
         float N = htCellIndex(t, halftoneSpaceMin, halftoneSpaceMax) * TT;
         f = vec2(fract(N) - 0.5, fract(b / S) - 0.5);
+        cellIdx = int(floor(b / S));
     } else {
         // concentric: polar lattice — rings warped radially, dots spaced by arc
         vec2 d = pix - htCenter * uResolution;
         float r    = length(d);
         float Rref = max(1.0, 0.5 * length(uResolution));
         t = clamp(r / Rref, 0.0, 1.0);
-        float u = htShapeT(t);
+        u = htShapeT(t);
         S = max(1.0, mix(halftoneSpaceMin, halftoneSpaceMax, u));
         D = mix(halftoneSizeMin, halftoneSizeMax, u);
         float Nr = htCellIndex(t, halftoneSpaceMin, halftoneSpaceMax) * Rref;
@@ -330,17 +341,26 @@ void main() {
         float M  = max(1.0, floor(2.0 * PI * rk / S + 0.5));
         float ang = atan(d.y, d.x) / (2.0 * PI) + 0.5;
         f = vec2(fr, fract(ang * M) - 0.5);
+        cellIdx = int(floor(ang * M));
     }
 
     float halfR = 0.5 * D / S;
 
     float cov;
     if (htShape == 2 && htHasAtlas == 1) {
-        // ASCII: pick a glyph from t across the low->high character sets, scale it
-        // into the cell by the dot size, and sample its coverage from the atlas.
-        int total = htLowCount + htHighCount;
-        int gi = int(clamp(t, 0.0, 0.9999) * float(total));
-        gi = clamp(gi, 0, total - 1);
+        // ASCII: the low/high strings are whole words. A hard luminance/gradient
+        // split picks which word; the cell's position along the lattice picks which
+        // letter of that word (mod its length), so "SAD" tiles as ...S A D S A D...
+        // rather than each letter owning its own band.
+        bool useHigh = (t >= 0.5);
+        int wordLen, wordStart;
+        if (useHigh && htHighCount > 0) { wordLen = htHighCount; wordStart = htLowCount; }
+        else if (htLowCount > 0)        { wordLen = htLowCount;  wordStart = 0; }
+        else                            { wordLen = htHighCount; wordStart = htLowCount; }
+        int li = cellIdx % wordLen;
+        if (li < 0) li += wordLen;                    // GLSL % truncates toward zero
+        int gi = wordStart + li;
+        gi = clamp(gi, 0, htLowCount + htHighCount - 1);
         int gc = gi - (gi / htAtlasCols) * htAtlasCols;
         int gr = gi / htAtlasCols;
         float sc = max(1e-4, D / S);
@@ -359,8 +379,11 @@ void main() {
     }
 
     // Compose the halftone layer over the image: dots opaque, gaps at BG alpha.
+    // Dot color interpolates low->high by the same shaped gradient/luminance u
+    // that drives size and spacing.
+    vec3  dotCol  = mix(htDotColor, htDotColorHigh, u);
     float bgA     = halftoneBgAlpha / 100.0;
-    vec3  layerC  = mix(htBgColor, htDotColor, cov);
+    vec3  layerC  = mix(htBgColor, dotCol, cov);
     float layerA  = mix(bgA, 1.0, cov);
     vec3  overlaid = mix(c.rgb, layerC, layerA);
 

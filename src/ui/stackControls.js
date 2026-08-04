@@ -402,7 +402,7 @@ export function buildEffectBody(inst, onRebuild) {
     for (const sel of blendModeSelects) {
         const prefix = sel.dataset.instParam.replace('BlendMode', '');
         const mapParams   = ['BlendMapAmount', 'BlendMapScale', 'BlendMapRadius', 'BlendMapInvert'];
-        const noMapParams = ['Opacity', 'Threshold', 'ThresholdTarget', 'ThresholdReverse', 'ThresholdOnDest'];
+        const noMapParams = ['Opacity', 'Threshold', 'ThresholdTarget', 'ThresholdReverse'];
 
         const pickerRow = document.createElement('div');
         pickerRow.className = 'control-group blend-map-picker';
@@ -436,6 +436,19 @@ export function buildEffectBody(inst, onRebuild) {
 
         sel.addEventListener('change', updateBlendMapUI);
         updateBlendMapUI();
+    }
+
+    // Generic fade-shape UI: the "Sides" slider is only meaningful for the polygon shape.
+    const fadeShapeSelects = content.querySelectorAll('[data-inst-param$="FadeShape"]');
+    for (const sel of fadeShapeSelects) {
+        const prefix = sel.dataset.instParam.replace('FadeShape', '');
+        const sidesEl = content.querySelector(`[data-inst-param="${prefix}FadeSides"]`)?.closest('.control-group, .checkbox-label');
+        if (!sidesEl) continue;
+        const updateFadeShapeUI = () => {
+            sidesEl.style.display = sel.value === 'polygon' ? '' : 'none';
+        };
+        sel.addEventListener('change', updateFadeShapeUI);
+        updateFadeShapeUI();
     }
 
     if (inst.effectName === 'cut') {

@@ -13,8 +13,8 @@ export const grainEffect = {
     handleParams: [...fade.handleParams],
     uiGroups: [
         { keys: ['grainType', 'grainIntensity', 'grainSize'] },
-        fade.uiGroup,
         blend.uiGroup,
+        fade.uiGroup,
     ],
     params: {
         grainEnabled:   { default: false, label: 'Enable' },

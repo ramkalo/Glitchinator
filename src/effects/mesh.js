@@ -220,8 +220,8 @@ export const meshEffect = {
         { label: 'X Lines', keys: ['meshXCount', 'meshXDist', ...(p.meshXDist !== 'even' ? ['meshXMult'] : []), ...(p.meshXDist === 'sinusoidal' ? ['meshXCycles'] : []), ...(p.meshXDist === 'formula' ? ['meshXFormula'] : [])] },
         { label: 'Y Lines', keys: ['meshYCount', 'meshYDist', ...(p.meshYDist !== 'even' ? ['meshYMult'] : []), ...(p.meshYDist === 'sinusoidal' ? ['meshYCycles'] : []), ...(p.meshYDist === 'formula' ? ['meshYFormula'] : [])] },
         { label: 'Style',   keys: ['meshLineColorMode', 'meshThickness'] },
-        fade.uiGroup,
         blend.uiGroup,
+        fade.uiGroup,
     ],
     canvas2d: applyMesh,
 };

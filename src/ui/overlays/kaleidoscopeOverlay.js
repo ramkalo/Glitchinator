@@ -2,6 +2,7 @@ import { canvas } from '../../renderer/glstate.js';
 import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
 import { uiCtx, uiOverlay, syncSize, drawHandle, drawRotHandle, drawCornerHandle, HIT_RADIUS, applyGrab } from '../overlayUtils.js';
+import { drawFadeFromState, hitTestFadeHandles, hitTestFadeRegion } from './fadeOverlay.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -75,6 +76,7 @@ export function drawKaleidoscope(p) {
     syncSize();
     const W = uiOverlay.width, H = uiOverlay.height;
     uiCtx.clearRect(0, 0, W, H);
+    drawFadeFromState(p, W, H);
 
     const mode = p.kaleidoscopeMode ?? 'mirror';
 
@@ -212,6 +214,9 @@ export function hitTestKaleidoscope(e) {
     const W  = uiOverlay.width, H = uiOverlay.height;
     const mode = p.kaleidoscopeMode ?? 'mirror';
 
+    const fh = hitTestFadeHandles(p, mx, my, W, H);
+    if (fh) return fh;
+
     if (mode === 'mirror') {
         const cx = (0.5 + p.kMirrorX / 100) * W;
         const cy = (0.5 - p.kMirrorY / 100) * H;
@@ -224,7 +229,7 @@ export function hitTestKaleidoscope(e) {
         const rotHY     = cy + perpSin * 30;
         if (Math.hypot(mx - rotHX, my - rotHY) <= HIT_RADIUS) return 'lineRot';
 
-        return null;
+        return hitTestFadeRegion(p, mx, my, W, H);
     }
 
     if (mode === 'symmetry') {
@@ -237,7 +242,7 @@ export function hitTestKaleidoscope(e) {
         const [tipX, tipY] = rayCanvasIntersect(cx, cy, dx0, dy0, W, H);
         if (Math.hypot(mx - tipX, my - tipY) <= HIT_RADIUS) return 'symTip';
 
-        return null;
+        return hitTestFadeRegion(p, mx, my, W, H);
     }
 
     // Kaleidoscope mode
@@ -254,7 +259,7 @@ export function hitTestKaleidoscope(e) {
         if (Math.hypot(mx - verts[i][0], my - verts[i][1]) <= HIT_RADIUS) return `v${i}`;
     }
 
-    return null;
+    return hitTestFadeRegion(p, mx, my, W, H);
 }
 
 // ─── Drag ─────────────────────────────────────────────────────────────────────

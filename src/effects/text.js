@@ -431,8 +431,8 @@ export const textEffect = {
         { label: 'Color', keys: ['textColor', 'textNoiseRandomize', 'textCharAlpha', 'textOutlineWidth', 'textOutlineColor', 'textBg', 'textBgOpacity', 'textBgGrainSize'] },
         { label: 'Layout', keys: ['textWrap', 'textAlign', 'textVAlign'] },
         { label: 'Box', keys: ['textBoxReset', 'textBoxRightAngles'] },
-        fade.uiGroup,
         blend.uiGroup,
+        fade.uiGroup,
     ],
     canvas2d: applyText,
 };

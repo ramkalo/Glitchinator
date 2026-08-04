@@ -13,8 +13,8 @@ export const digitizeEffect = {
         { keys: ['pixelSize', 'pixelColors'] },
         { keys: ['digitizeSnapToPalette'] },
         { keys: ['digitizeDither', 'digitizeNoise'] },
-        fade.uiGroup,
         blend.uiGroup,
+        fade.uiGroup,
     ],
     params: {
         digitizeEnabled: { default: false, label: 'Enable' },

@@ -3,6 +3,9 @@ import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
 import { uiCtx, uiOverlay, syncSize, drawHandle, drawCornerHandle, drawRotHandle, HIT_RADIUS, applyGrab } from '../overlayUtils.js';
 import { blobHarmonics } from '../../effects/glassBlob.js';
+import { drawFadeShape, getFadeHandlePositions, hitTestFadeVertices, isInsideFade } from './fadeOverlay.js';
+
+const fadeCenterPx = (p, W, H) => [(0.5 + (p.glassBlobFadeX ?? -25) / 100) * W, (0.5 - (p.glassBlobFadeY ?? -25) / 100) * H];
 
 // Unit irregular radius at angle (matches the shader's gbRadiusAt; uses the SAME
 // JS-computed harmonics the shader receives, so the outline tracks the blob exactly).
@@ -34,6 +37,10 @@ export function drawGlassBlob(p) {
     const w = uiOverlay.width, h = uiOverlay.height;
     uiCtx.clearRect(0, 0, w, h);
     const g = geom(p, w, h);
+
+    // Universal fade shape drawn underneath the blob handles.
+    const [ffcx, ffcy] = fadeCenterPx(p, w, h);
+    drawFadeShape(p, ffcx, ffcy, w, h);
 
     // Irregular ellipse outline.
     uiCtx.beginPath();
@@ -90,6 +97,18 @@ export function hitTestGlassBlob(e) {
     const lx = (p.glassBlobLightX / 100) * w, ly = (p.glassBlobLightY / 100) * h;
     if (Math.hypot(mx - lx, my - ly) <= HIT_RADIUS) return 'light';
 
+    // Fade discrete handles (vertices/edges/rotate) take priority over the blob handles.
+    const fadeOn = !!p.glassBlobFadeEnabled;
+    const [fcx, fcy] = fadeCenterPx(p, w, h);
+    if (fadeOn) {
+        const vHit = hitTestFadeVertices(p, mx, my, fcx, fcy, w, h);
+        if (vHit) return vHit;
+        const { edgeW, edgeH, rotHandle } = getFadeHandlePositions(p, fcx, fcy, w, h);
+        if (Math.hypot(mx - rotHandle[0], my - rotHandle[1]) <= HIT_RADIUS) return 'fadeRot';
+        if (edgeW && Math.hypot(mx - edgeW[0], my - edgeW[1]) <= HIT_RADIUS) return 'fadeEdgeW';
+        if (edgeH && Math.hypot(mx - edgeH[0], my - edgeH[1]) <= HIT_RADIUS) return 'fadeEdgeH';
+    }
+
     const g = geom(p, w, h);
     const rot   = g.l2s(0, g.ey + ROT_MARGIN_PX / h);
     const edgeW = g.l2s(g.ex, 0);
@@ -98,6 +117,10 @@ export function hitTestGlassBlob(e) {
     if (Math.hypot(mx - edgeW[0], my - edgeW[1]) <= HIT_RADIUS) return 'edgeW';
     if (Math.hypot(mx - edgeH[0], my - edgeH[1]) <= HIT_RADIUS) return 'edgeH';
     if (Math.hypot(mx - g.cx,     my - g.cy)     <= HIT_RADIUS) return 'center';
+
+    // Grabbing anywhere inside the fade region moves it — checked last so the blob
+    // handles sitting on top still win.
+    if (fadeOn && isInsideFade(p, mx, my, fcx, fcy, w, h)) return 'fadeCenter';
     return null;
 }
 

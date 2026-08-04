@@ -3,6 +3,10 @@
 // signed-distance field, so the surface is smooth and lighting reads cleanly.
 
 import { glassMapTexture } from '../renderer/glstate.js';
+import { buildFadeControl, buildBlendControl } from './controls/index.js';
+
+const fade  = buildFadeControl('glassBlob');
+const blend = buildBlendControl('glassBlob');
 
 function hexToRgb01(hex) {
     const n = parseInt((hex || '#bfe8ff').replace('#', ''), 16);
@@ -45,6 +49,9 @@ function glassBlobBindUniforms(gl, prog, p) {
     set3('glassBlobColor',      p.glassBlobColor);
     set3('glassBlobLightColor', p.glassBlobLightColor || '#ffffff');
 
+    fade.bindUniforms(gl, prog, p);
+    blend.bindUniforms(gl, prog, p);
+
     if (locs['uMode'] != null) gl.uniform1i(locs['uMode'], MODE_MAP[p.glassBlobMode ?? 'glass'] ?? 0);
 
     // User sky/reflection image (reused global glassMap asset) on TEXTURE1.
@@ -71,9 +78,11 @@ export const glassBlobEffect = {
         'glassBlobIridescence', 'glassBlobSwirlScale', 'glassBlobSwirlFreq', 'glassBlobSwirlSeed',
         'glassBlobShininess', 'glassBlobSpecular', 'glassBlobFresnel',
         'glassBlobLightX', 'glassBlobLightY', 'glassBlobLightZ', 'glassBlobLightBright',
-        'glassBlobShadow', 'glassBlobOpacity',
+        'glassBlobShadow', 'glassBlobFill',
+        ...fade.paramKeys, ...blend.paramKeys,
     ],
-    handleParams: ['glassBlobX', 'glassBlobY', 'glassBlobSizeX', 'glassBlobSizeY', 'glassBlobAngle', 'glassBlobLightX', 'glassBlobLightY'],
+    handleParams: ['glassBlobX', 'glassBlobY', 'glassBlobSizeX', 'glassBlobSizeY', 'glassBlobAngle', 'glassBlobLightX', 'glassBlobLightY',
+        ...fade.handleParams],
     uiGroups: (p) => {
         const mode = p.glassBlobMode ?? 'glass';
         const shape = ['glassBlobMode', 'glassBlobSizeX', 'glassBlobSizeY', 'glassBlobIrregular',
@@ -83,18 +92,20 @@ export const glassBlobEffect = {
             material = ['glassBlobReflect', 'glassBlobShininess', 'glassBlobSpecular', 'glassBlobFresnel', 'glassBlobColor'];
         } else if (mode === 'oil') {
             material = ['glassBlobIridescence', 'glassBlobSwirlScale', 'glassBlobSwirlFreq', 'glassBlobSwirlSeed', 'glassBlobSwirlRegen',
-                'glassBlobRefract', 'glassBlobSpecular', 'glassBlobFresnel', 'glassBlobColor', 'glassBlobOpacity'];
+                'glassBlobRefract', 'glassBlobSpecular', 'glassBlobFresnel', 'glassBlobColor', 'glassBlobFill'];
         } else if (mode === 'soap') {
             material = ['glassBlobIridescence', 'glassBlobSwirlScale', 'glassBlobSwirlFreq', 'glassBlobSwirlSeed', 'glassBlobSwirlRegen',
                 'glassBlobSpecular', 'glassBlobFresnel'];
         } else {
             material = ['glassBlobRefract', 'glassBlobMagnify', 'glassBlobDispersion', 'glassBlobShininess',
-                'glassBlobSpecular', 'glassBlobFresnel', 'glassBlobColor', 'glassBlobOpacity'];
+                'glassBlobSpecular', 'glassBlobFresnel', 'glassBlobColor', 'glassBlobFill'];
         }
         return [
             { label: 'Shape',    keys: shape },
             { label: 'Material', keys: material },
             { label: 'Light',    keys: ['glassBlobLightColor', 'glassBlobLightBright', 'glassBlobLightZ', 'glassBlobShadow'] },
+            blend.uiGroup,
+            fade.uiGroup,
         ];
     },
     params: {
@@ -129,7 +140,9 @@ export const glassBlobEffect = {
         glassBlobLightBright:{ default: 100, min: 0, max: 200, label: 'Light Brightness' },
         glassBlobShadow:     { default: 35, min: 0, max: 100, label: 'Shadow' },
         glassBlobColor:      { default: '#bfe8ff', type: 'color', label: 'Color' },
-        glassBlobOpacity:    { default: 0, min: 0, max: 100, label: 'Opacity' },
+        glassBlobFill:       { default: 0, min: 0, max: 100, label: 'Fill' },
+        ...fade.params,
+        ...blend.params,
     },
     enabled: (p) => p.glassBlobEnabled,
     bindUniforms: glassBlobBindUniforms,
@@ -141,12 +154,14 @@ uniform float glassBlobX, glassBlobY, glassBlobSizeX, glassBlobSizeY, glassBlobA
 uniform float glassBlobHeight, glassBlobRoundness, glassBlobRefract, glassBlobDispersion, glassBlobMagnify;
 uniform float glassBlobReflect, glassBlobIridescence, glassBlobSwirlScale, glassBlobSwirlFreq, glassBlobSwirlSeed;
 uniform float glassBlobShininess, glassBlobSpecular, glassBlobFresnel;
-uniform float glassBlobLightX, glassBlobLightY, glassBlobLightZ, glassBlobOpacity;
+uniform float glassBlobLightX, glassBlobLightY, glassBlobLightZ, glassBlobFill;
 uniform float glassBlobLightBright, glassBlobShadow;
 uniform vec3  glassBlobColor;
 uniform vec3  glassBlobLightColor;
 uniform float glassBlobAmp[4];
 uniform float glassBlobPhase[4];
+${fade.glsl}
+${blend.glsl}
 
 mat2 gbRot(float a) { float c = cos(a), s = sin(a); return mat2(c, s, -s, c); }
 
@@ -270,7 +285,7 @@ void main() {
         vec3 irid = 0.5 + 0.5 * cos(6.2831853 * (thickness * glassBlobSwirlFreq) + vec3(0.0, 2.094, 4.188));
         float iri = glassBlobIridescence / 100.0;
         if (uMode == 2) {
-            vec3 baseCol = mix(bg, glassBlobColor * 0.25, glassBlobOpacity / 100.0) * bodyDim;
+            vec3 baseCol = mix(bg, glassBlobColor * 0.25, glassBlobFill / 100.0) * bodyDim;
             vec3 sheen   = irid * iri * (0.4 + 0.6 * fres) * dirW;
             blob = clamp(baseCol + sheen + glassBlobLightColor * spec, 0.0, 1.0);
         } else {
@@ -279,12 +294,17 @@ void main() {
         }
     } else {
         // Glass.
-        vec3 fill = mix(bg, glassBlobColor, glassBlobOpacity / 100.0) * bodyDim;
+        vec3 fill = mix(bg, glassBlobColor, glassBlobFill / 100.0) * bodyDim;
         float rimAmt = fres * dirW * bright;
         blob = clamp(fill + glassBlobLightColor * spec + glassBlobLightColor * rimAmt * 0.5, 0.0, 1.0);
     }
 
-    fragColor = vec4(mix(src.rgb, blob, cov), src.a);
+    // Composite the blob onto the image, then apply the universal Fade + Blend controls.
+    vec3  layer  = mix(src.rgb, blob, cov);
+    float weight = ${fade.fnName}();
+    vec3  faded  = mix(src.rgb, layer, weight);
+    if (!${blend.thresholdFn}(src, vec4(faded, src.a))) { fragColor = src; return; }
+    fragColor = vec4(${blend.blendFn}(src.rgb, faded), src.a);
 }
 `,
 };

@@ -319,8 +319,8 @@ export const corruptedEffect = {
             ? ['corruptedSeeds', 'corruptedSeed', 'corruptedPattern', 'corruptedColorMode', 'corruptedZoneSeed', 'corruptedInfect', 'corruptedChunkSize', 'corruptedCluster']
             : ['corruptedSeeds', 'corruptedSeed', 'corruptedPattern', 'corruptedColorMode', 'corruptedColor', 'corruptedInfect', 'corruptedChunkSize', 'corruptedCluster']
         },
-        fade.uiGroup,
         blend.uiGroup,
+        fade.uiGroup,
     ],
     params: {
         corruptedEnabled:   { default: false, label: 'Enable' },

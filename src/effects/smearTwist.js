@@ -40,7 +40,7 @@ export const smearTwistEffect = {
         if (mode === 'linear')     groups.push({ keys: ['smearTwistLinearDx', 'smearTwistLinearDy'] });
         if (mode === 'rotational') groups.push({ keys: ['smearTwistRotAngle'] });
         if (mode === 'radial')     groups.push({ keys: ['smearTwistRadialAmt'] });
-        groups.push(fade.uiGroup, blend.uiGroup);
+        groups.push(blend.uiGroup, fade.uiGroup);
         return groups;
     },
     params: {

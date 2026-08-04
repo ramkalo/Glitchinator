@@ -15,8 +15,8 @@ export const basicEffect = {
     handleParams: [...fade.handleParams],
     uiGroups: [
         { keys: ['brightness', 'contrast', 'saturation', 'highlights', 'shadows', 'temperature', 'tint'] },
-        fade.uiGroup,
         blend.uiGroup,
+        fade.uiGroup,
     ],
     params: {
         basicEnabled:  { default: false, label: 'Enable' },

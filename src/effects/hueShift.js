@@ -11,8 +11,8 @@ export const hueShiftEffect = {
     handleParams: [...fade.handleParams],
     uiGroups: [
         { keys: ['hueCenter', 'hueWidth', 'hueRotate', 'hueFeather'] },
-        fade.uiGroup,
         blend.uiGroup,
+        fade.uiGroup,
     ],
     params: {
         hueShiftEnabled: { default: false, label: 'Enable' },

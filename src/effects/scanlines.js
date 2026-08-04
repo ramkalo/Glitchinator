@@ -12,8 +12,8 @@ export const scanlinesEffect = {
     uiGroups: [
         { label: 'Warning: this app is still under development. When using the CRT scanlines effect you may notice difference between what you see and what gets exported. Until I fix this issue I recommend taking a screen shot of the final image as this will often preserve moire effects better', keys: [] },
         { keys: ['scanlineEnabled', 'scanline', 'scanSpacing'] },
-        fade.uiGroup,
         blend.uiGroup,
+        fade.uiGroup,
     ],
     params: {
         scanlineEnabled: { default: false, label: 'Enable' },

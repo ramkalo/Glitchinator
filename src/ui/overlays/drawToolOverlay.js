@@ -1,8 +1,10 @@
 import { canvas } from '../../renderer/glstate.js';
 import { setInstanceParam, getStack } from '../../state/effectStack.js';
 import { processImageImmediate } from '../../renderer/pipeline.js';
+import { state } from '../overlayState.js';
 import { uiCtx, uiOverlay, syncSize } from '../overlayUtils.js';
 import { resolveColorKey } from '../../effects/colorOptions.js';
+import { drawFadeFromState, hitTestFadeHandles, hitTestFadeRegion } from './fadeOverlay.js';
 
 let _activeStroke = null;
 let _activeInstId = null;
@@ -25,11 +27,25 @@ function _previewColor(stroke) {
     return resolveColorKey(stroke.colorKey, pal) || stroke.color || '#000000';
 }
 
-export function drawDrawTool(_params) {
+export function drawDrawTool(params) {
+    syncSize();
     uiCtx.clearRect(0, 0, uiOverlay.width, uiOverlay.height);
+    if (params) drawFadeFromState(params, uiOverlay.width, uiOverlay.height);
 }
 
-export function hitTestDrawTool(_e) {
+// Fade handles win over drawing; anywhere else is a draw surface ('canvas').
+export function hitTestDrawTool(e) {
+    const inst = getStack().find(i => i.id === state.instId);
+    if (inst) {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        const W = uiOverlay.width, H = uiOverlay.height;
+        const p = inst.params;
+        const fh = hitTestFadeHandles(p, mx, my, W, H);
+        if (fh) return fh;
+        const fr = hitTestFadeRegion(p, mx, my, W, H);
+        if (fr) return fr;
+    }
     return 'canvas';
 }
 

@@ -2,6 +2,7 @@ import { canvas } from '../../renderer/glstate.js';
 import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
 import { uiCtx, uiOverlay, syncSize, drawHandle, drawCornerHandle, HIT_RADIUS } from '../overlayUtils.js';
+import { drawFadeFromState, hitTestFadeHandles, hitTestFadeRegion } from './fadeOverlay.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -9,6 +10,7 @@ export function drawDigitalSmear(p) {
     syncSize();
     const w = uiOverlay.width, h = uiOverlay.height;
     uiCtx.clearRect(0, 0, w, h);
+    drawFadeFromState(p, w, h);
 
     const count = p.smearTwistNodeCount ?? 0;
     const cx = (p.smearTwistCenterX ?? 50) / 100 * w;
@@ -50,6 +52,9 @@ export function hitTestDigitalSmear(e) {
     const W = uiOverlay.width, H = uiOverlay.height;
     const p = inst.params;
 
+    const fh = hitTestFadeHandles(p, mx, my, W, H);
+    if (fh) return fh;
+
     const cx = (p.smearTwistCenterX ?? 50) / 100 * W;
     const cy = (p.smearTwistCenterY ?? 50) / 100 * H;
     if (Math.hypot(mx - cx, my - cy) <= HIT_RADIUS) return 'center';
@@ -61,7 +66,7 @@ export function hitTestDigitalSmear(e) {
         if (Math.hypot(mx - nx, my - ny) <= HIT_RADIUS) return `node:${i}`;
     }
 
-    return null;
+    return hitTestFadeRegion(p, mx, my, W, H);
 }
 
 export function onDragDigitalSmear(e, inst, rect) {

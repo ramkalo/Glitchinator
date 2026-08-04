@@ -12,8 +12,8 @@ export const lineGlitchEffect = {
     handleParams: [...fade.handleParams],
     uiGroups: [
         { keys: ['lineGlitchTracking', 'lineGlitchTrackingThickness', 'lineGlitchTrackingAmount', 'lineGlitchTrackingSeed', 'lineGlitchTrackingColor', 'lineGlitchTrackingAngle', 'lineGlitchTrackingWobble', 'lineGlitchTrackingWobbleSeed', 'lineGlitchTrackingWobbleBtn'] },
-        fade.uiGroup,
         blend.uiGroup,
+        fade.uiGroup,
     ],
     params: {
         lineGlitchEnabled:            { default: false, label: 'Enable' },

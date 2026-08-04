@@ -96,12 +96,11 @@ const BLEND_THRESHOLD_GLSL = `
 uniform float __P__Threshold;
 uniform int   __P__ThresholdTarget;
 uniform int   __P__ThresholdReverse;
-uniform int   __P__ThresholdOnDest;
 
 bool __FN__(vec4 destColor, vec4 srcColor) {
     if (__P__BlendEnabled != 1) return true;
     if (__P__BlendMode == 6) return true;
-    vec4 color = (__P__ThresholdOnDest == 1) ? destColor : srcColor;
+    vec4 color = destColor;
     float val;
     if      (__P__ThresholdTarget == 1) val = color.r;
     else if (__P__ThresholdTarget == 2) val = color.g;
@@ -157,7 +156,6 @@ export function buildBlendControl(prefix, defaults = {}) {
             [`${p}Threshold`]:         { default: defaults.threshold ?? 0, min: 0, max: 100, label: 'Threshold' },
             [`${p}ThresholdTarget`]:   { default: 'lum', options: [['lum', 'Luminance'], ['r', 'Red'], ['g', 'Green'], ['b', 'Blue']], label: 'Threshold Target' },
             [`${p}ThresholdReverse`]:  { default: false, label: 'Reverse Threshold' },
-            [`${p}ThresholdOnDest`]:   { default: true, label: 'On Destination' },
             [`${p}BlendMapAmount`]:    { default: 100, min: 0, max: 100, label: 'Blend Amount' },
             [`${p}BlendMapScale`]:     { default: 1, min: 1, max: 10, label: 'Map Scale' },
             [`${p}BlendMapRadius`]:    { default: 0, min: -50, max: 50, label: 'Map Radius' },
@@ -165,7 +163,7 @@ export function buildBlendControl(prefix, defaults = {}) {
         },
         paramKeys: [
             `${p}BlendEnabled`, `${p}BlendMode`, `${p}Opacity`,
-            `${p}Threshold`, `${p}ThresholdTarget`, `${p}ThresholdReverse`, `${p}ThresholdOnDest`,
+            `${p}Threshold`, `${p}ThresholdTarget`, `${p}ThresholdReverse`,
             `${p}BlendMapAmount`, `${p}BlendMapScale`, `${p}BlendMapRadius`, `${p}BlendMapInvert`,
         ],
         uiGroup: {
@@ -173,7 +171,7 @@ export function buildBlendControl(prefix, defaults = {}) {
             conditionKey: `${p}BlendEnabled`,
             keys: [
                 `${p}BlendEnabled`, `${p}BlendMode`, `${p}Opacity`,
-                `${p}Threshold`, `${p}ThresholdTarget`, `${p}ThresholdReverse`, `${p}ThresholdOnDest`,
+                `${p}Threshold`, `${p}ThresholdTarget`, `${p}ThresholdReverse`,
                 `${p}BlendMapAmount`, `${p}BlendMapScale`, `${p}BlendMapRadius`, `${p}BlendMapInvert`,
             ],
         },
@@ -184,7 +182,6 @@ export function buildBlendControl(prefix, defaults = {}) {
             si(`${p}BlendMode`,        BLEND_MAP[params[`${p}BlendMode`]] ?? 1);
             si(`${p}ThresholdTarget`,  { lum: 0, r: 1, g: 2, b: 3 }[params[`${p}ThresholdTarget`]] ?? 0);
             si(`${p}ThresholdReverse`, params[`${p}ThresholdReverse`] ? 1 : 0);
-            si(`${p}ThresholdOnDest`,  params[`${p}ThresholdOnDest`] ? 1 : 0);
             si(`${p}BlendMapInvert`,   params[`${p}BlendMapInvert`] ? 1 : 0);
 
             const mapLoc = locs['uBlendMapTex'];

@@ -296,8 +296,8 @@ export const tunnelEffect = {
         ]},
         { label: 'Style',  keys: ['tunnelThickness', 'tunnelThicknessScale', 'tunnelLineOpacity', 'tunnelLineOpacityScale'] },
         { label: 'Ramp',   keys: ['tunnelRampDist', ...(p.tunnelRampDist !== 'even' ? ['tunnelRampMult'] : []), ...(p.tunnelRampDist === 'sinusoidal' ? ['tunnelRampCycles'] : []), ...(p.tunnelRampDist === 'formula' ? ['tunnelRampFormula'] : [])] },
-        fade.uiGroup,
         blend.uiGroup,
+        fade.uiGroup,
     ],
     canvas2d: applyTunnel,
 };

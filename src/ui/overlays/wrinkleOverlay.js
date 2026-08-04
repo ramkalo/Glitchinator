@@ -1,8 +1,8 @@
 import { canvas } from '../../renderer/glstate.js';
 import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
-import { uiCtx, uiOverlay, syncSize, drawRotHandle, strokeAntLine, HIT_RADIUS, isInsideFadeShape, applyGrab } from '../overlayUtils.js';
-import { drawFadeShape, getFadeHandlePositions } from './fadeOverlay.js';
+import { uiCtx, uiOverlay, syncSize, drawRotHandle, strokeAntLine, HIT_RADIUS, applyGrab } from '../overlayUtils.js';
+import { drawFadeShape, getFadeHandlePositions, hitTestFadeVertices, isInsideFade } from './fadeOverlay.js';
 
 // Wrinkle placement overlay, mirroring the Halftone/Color Gel gradient overlay:
 //   linear      a dashed line along the crease direction that the user drags to move
@@ -103,15 +103,13 @@ export function hitTestWrinkle(e) {
 
     if (p.wrinkleFadeEnabled) {
         const [fcx, fcy] = fadeCenterPx(p, W, H);
+        const vHit = hitTestFadeVertices(p, mx, my, fcx, fcy, W, H);
+        if (vHit) return vHit;
         const { edgeW, edgeH, rotHandle } = getFadeHandlePositions(p, fcx, fcy, W, H);
         if (Math.hypot(mx - rotHandle[0], my - rotHandle[1]) <= HIT_RADIUS) return 'fadeRot';
-        if (Math.hypot(mx - edgeW[0],     my - edgeW[1])     <= HIT_RADIUS) return 'fadeEdgeW';
-        if (Math.hypot(mx - edgeH[0],     my - edgeH[1])     <= HIT_RADIUS) return 'fadeEdgeH';
-        const shape = p.wrinkleFadeShape ?? 'ellipse';
-        const angle = (p.wrinkleFadeAngle ?? 0) * Math.PI / 180;
-        const a = (p.wrinkleFadeW / 100) * W / 2;
-        const b = (p.wrinkleFadeH / 100) * H / 2;
-        if (isInsideFadeShape(mx, my, fcx, fcy, a, b, angle, shape !== 'ellipse')) return 'fadeCenter';
+        if (edgeW && Math.hypot(mx - edgeW[0], my - edgeW[1]) <= HIT_RADIUS) return 'fadeEdgeW';
+        if (edgeH && Math.hypot(mx - edgeH[0], my - edgeH[1]) <= HIT_RADIUS) return 'fadeEdgeH';
+        if (isInsideFade(p, mx, my, fcx, fcy, W, H)) return 'fadeCenter';
     }
 
     if (mode === 'concentric') {
@@ -173,18 +171,5 @@ export function onDragWrinkle(e, inst, rect) {
         return;
     }
 
-    const [fcx, fcy] = fadeCenterPx(p, W, H);
-    if (handle === 'fadeCenter') {
-        setInstanceParam(state.instId, 'wrinkleFadeX', Math.round(Math.max(-50, Math.min(50,  (mx / W - 0.5) * 100))));
-        setInstanceParam(state.instId, 'wrinkleFadeY', Math.round(Math.max(-50, Math.min(50, -(my / H - 0.5) * 100))));
-    } else if (handle === 'fadeEdgeW') {
-        setInstanceParam(state.instId, 'wrinkleFadeW', Math.round(Math.max(1, Math.min(200, Math.abs(mx - fcx) / (W / 2) * 100))));
-    } else if (handle === 'fadeEdgeH') {
-        setInstanceParam(state.instId, 'wrinkleFadeH', Math.round(Math.max(1, Math.min(200, Math.abs(my - fcy) / (H / 2) * 100))));
-    } else if (handle === 'fadeRot') {
-        let deg = Math.atan2(my - fcy, mx - fcx) * 180 / Math.PI + 90;
-        if (deg > 180)  deg -= 360;
-        if (deg < -180) deg += 360;
-        setInstanceParam(state.instId, 'wrinkleFadeAngle', Math.round(deg));
-    }
+    // Fade handles (fadeCenter/fadeEdge*/fadeRot/fadeV#) are dragged centrally in canvasPicker.
 }

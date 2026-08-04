@@ -7,12 +7,12 @@ import { processImageImmediate } from '../renderer/pipeline.js';
 import { state } from './overlayState.js';
 import { uiOverlay, hitTestCentre, applyGrab } from './overlayUtils.js';
 
-import { drawFade,           hitTestFade,           onDragFade           } from './overlays/fadeOverlay.js';
+import { drawFade,           hitTestFade,           resetFadeVertices    } from './overlays/fadeOverlay.js';
 import { drawDoubleExposure, hitTestDoubleExposure, onDragDoubleExposure } from './overlays/doubleExposureOverlay.js';
 import { drawShapeSticker,   hitTestShapeSticker,   onDragShapeSticker,  resetShapeStickerVertices } from './overlays/shapeStickerOverlay.js';
 import { drawCrop,           hitTestCrop,           onDragCrop,          computeCropRect } from './overlays/cropOverlay.js';
 import { drawLineDrag,       hitTestLineDrag,       onDragLineDrag       } from './overlays/lineDragOverlay.js';
-import { drawChroma                                                       } from './overlays/chromaOverlay.js';
+import { drawChroma, hitTestChroma                                        } from './overlays/chromaOverlay.js';
 import { drawVignette,       hitTestVignette,       onDragVignette       } from './overlays/vignetteOverlay.js';
 import { drawCRTCurvature,   hitTestCRTCurvature,   onDragCRTCurvature  } from './overlays/crtOverlay.js';
 import { drawCorrupted,      hitTestCorrupted                            } from './overlays/corruptedOverlay.js';
@@ -50,6 +50,21 @@ onStackChange((key) => {
     }
     const inst = getStack().find(i => i.id === state.instId);
     if (!inst) { _hideActive(); return; }
+
+    // Generic fade-polygon vertex seeding — for ANY active fade overlay whose shape is
+    // polygon, (re)seed the vertices to a regular N-gon when Shape/Sides/Width/Height
+    // change (mirrors Shape Sticker). Works off the standardized fade state keys.
+    if (state.shapeKey && state.shapeKey.endsWith('FadeShape') && state.wKey) {
+        const p = inst.params;
+        if ((p[state.shapeKey] ?? 'ellipse') === 'polygon') {
+            const base = state.wKey.slice(0, -1);   // '<prefix>Fade'
+            if (key === state.shapeKey || key === `${base}Sides` || key === state.wKey || key === state.hKey) {
+                resetFadeVertices(inst.id, base, p);
+                return;
+            }
+        }
+    }
+
     if (state.mode === 'fade')          drawFade(inst.params);
     if (state.mode === 'crop')          drawCrop(inst.params);
     if (state.mode === 'matrixRain')    drawMatrixRain(inst.params);
@@ -223,9 +238,10 @@ export function hideVignetteOverlay() {
 }
 
 export function showCRTCurvatureOverlay(inst) {
-    state.wKey     = 'barrelDistortionMajor';
-    state.hKey     = 'barrelDistortionMinor';
-    state.angleKey = 'barrelDistortionAngle';
+    // NOTE: fade state keys (shapeKey/wKey/hKey/angleKey/enabledKey) are set by
+    // showFadeOverlay, which runs first because barrelDistortion declares overlays.fade.
+    // The CRT ellipse handles use hardcoded barrelDistortion* keys in onDragCRTCurvature,
+    // so we must NOT overwrite state.wKey here or the embedded fade would resolve wrong.
     _activate('barrelDistortion', inst, 'barrelDistortionX', 'barrelDistortionY');
     drawCRTCurvature(inst.params);
 }
@@ -413,6 +429,11 @@ export function hideResinOverlay() {
 }
 
 export function showGlassBlobOverlay(inst) {
+    state.shapeKey   = 'glassBlobFadeShape';
+    state.wKey       = 'glassBlobFadeW';
+    state.hKey       = 'glassBlobFadeH';
+    state.angleKey   = 'glassBlobFadeAngle';
+    state.enabledKey = 'glassBlobFadeEnabled';
     _activate('glassBlob', inst, 'glassBlobX', 'glassBlobY');
     drawGlassBlob(inst.params);
 }
@@ -553,29 +574,38 @@ function _hideActive() {
 
 const CROP_CURSOR = { center: 'grab', tl: 'nw-resize', tr: 'ne-resize', br: 'se-resize', bl: 'sw-resize' };
 
+// Cursor for the standardized fade handles (shared by every fade-using mode); null if not a fade handle.
+function fadeCursor(h) {
+    if (h === 'fadeCenter') return 'grab';
+    if (h === 'fadeRot')    return 'crosshair';
+    if (h === 'fadeEdgeW')  return 'ew-resize';
+    if (h === 'fadeEdgeH')  return 'ns-resize';
+    if (h && /^fadeV\d+$/.test(h)) return 'move';
+    return null;
+}
+
 function getCursorForMode(mode, h) {
+    // Fade handles share one cursor mapping across every mode that embeds a fade.
+    const fc = fadeCursor(h);
+    if (fc) return fc;
     switch (mode) {
         case 'crop':
             return h ? (CROP_CURSOR[h] || 'default') : 'default';
         case 'viewport':
             return h === 'center' ? 'grab' : h ? 'nwse-resize' : 'default';
         case 'fade':
-            return h === 'center' ? 'grab' : h === 'rot' ? 'crosshair' : h === 'edgeW' ? 'ew-resize' : h === 'edgeH' ? 'ns-resize' : 'default';
+            return fadeCursor(h) || 'default';
         case 'lineDrag':
-            return (h === 'center' || h === 'fadeCenter') ? 'grab'
-                : (h === 'rot' || h === 'lineRot') ? 'crosshair'
-                : h === 'edgeW' ? 'ew-resize'
-                : h === 'edgeH' ? 'ns-resize' : 'default';
+            return fadeCursor(h)
+                || ((h === 'center') ? 'grab'
+                : (h === 'rot' || h === 'lineRot') ? 'crosshair' : 'default');
         case 'matrixRain':
-            return (h === 'center' || h === 'fadeCenter') ? 'grab'
-                : h === 'rot' ? 'crosshair'
-                : h === 'edgeW' ? 'ew-resize'
-                : h === 'edgeH' ? 'ns-resize' : 'default';
+            return fadeCursor(h) || (h === 'center' ? 'grab' : 'default');
         case 'vignette':
         case 'barrelDistortion':
             return h === 'center' ? 'grab' : h === 'rot' ? 'crosshair' : h === 'edgeW' ? 'ew-resize' : h === 'edgeH' ? 'ns-resize' : 'default';
         case 'doubleExposure':
-            return (h === 'imgPos' || h === 'center') ? 'grab' : h === 'rot' ? 'crosshair' : h === 'edgeW' ? 'ew-resize' : h === 'edgeH' ? 'ns-resize' : 'default';
+            return fadeCursor(h) || (h === 'imgPos' ? 'grab' : 'default');
         case 'blendMap':
             return h === 'center' ? 'grab' : h === 'rot' ? 'crosshair' : h === 'scale' ? 'nwse-resize' : 'default';
         case 'kaleidoscope':
@@ -587,19 +617,17 @@ function getCursorForMode(mode, h) {
         case 'corrupted':
             return h ? 'grab' : 'default';
         case 'text':
-            return (h === 'center' || h === 'fadeCenter') ? 'grab'
-                : (h === 'rot' || h === 'fadeRot') ? 'crosshair'
+            return fadeCursor(h)
+                || (h === 'center' ? 'grab'
+                : h === 'rot' ? 'crosshair'
                 : (h === 'tl' || h === 'br') ? 'nwse-resize'
-                : (h === 'tr' || h === 'bl') ? 'nesw-resize'
-                : h === 'fadeEdgeW' ? 'ew-resize'
-                : h === 'fadeEdgeH' ? 'ns-resize' : 'default';
+                : (h === 'tr' || h === 'bl') ? 'nesw-resize' : 'default');
         case 'shapeSticker':
-            return (h === 'center' || h === 'grab_center' || h === 'fadeCenter') ? 'grab'
-                : (h === 'rot' || h === 'grab_rot' || h === 'fadeRot') ? 'crosshair'
+            return fadeCursor(h)
+                || ((h === 'center' || h === 'grab_center') ? 'grab'
+                : (h === 'rot' || h === 'grab_rot') ? 'crosshair'
                 : (h && h.startsWith('v')) ? 'move'
-                : h === 'fadeEdgeW' ? 'ew-resize'
-                : h === 'fadeEdgeH' ? 'ns-resize'
-                : h ? 'nwse-resize' : 'default';
+                : h ? 'nwse-resize' : 'default');
         case 'smearTwist': {
             if (h === 'center' || (h && h.startsWith('node:'))) return 'grab';
             const dsInst = getStack().find(i => i.id === state.instId);
@@ -619,23 +647,23 @@ function getCursorForMode(mode, h) {
         case 'halftone':
         case 'wrinkle':
         case 'caustics':
-            return (h && h.startsWith('line')) ? 'grab'
+            return fadeCursor(h)
+                || ((h && h.startsWith('line')) ? 'grab'
                 : h === 'center' ? 'grab'
-                : h === 'gradRot' ? 'crosshair'
-                : h === 'fadeCenter' ? 'grab'
-                : h === 'fadeRot' ? 'crosshair'
-                : h === 'fadeEdgeW' ? 'ew-resize'
-                : h === 'fadeEdgeH' ? 'ns-resize' : 'default';
+                : h === 'gradRot' ? 'crosshair' : 'default');
         case 'resin':
-            return (h === 'light' || h === 'bubble' || h === 'image' || h === 'fadeCenter') ? 'grab'
-                : h === 'rot' ? 'crosshair'
-                : h === 'edgeW' ? 'ew-resize'
-                : h === 'edgeH' ? 'ns-resize' : 'default';
+            return fadeCursor(h)
+                || ((h === 'light' || h === 'bubble' || h === 'image') ? 'grab' : 'default');
         case 'glassBlob':
-            return (h === 'center' || h === 'light') ? 'grab'
+            return fadeCursor(h)
+                || ((h === 'center' || h === 'light') ? 'grab'
                 : h === 'rot' ? 'crosshair'
                 : h === 'edgeW' ? 'ew-resize'
-                : h === 'edgeH' ? 'ns-resize' : 'default';
+                : h === 'edgeH' ? 'ns-resize' : 'default');
+        case 'mesh':
+        case 'tunnel':
+            return fadeCursor(h)
+                || ((h === 'move') ? 'grab' : h ? 'move' : 'default');
         case 'cut':
             return (h === 'center' || (h && h.startsWith('body:'))) ? 'grab'
                 : h === 'rot' ? 'crosshair'
@@ -646,18 +674,6 @@ function getCursorForMode(mode, h) {
                 : (h === 'edgeB') ? 'ns-resize' : 'default';
         case 'drawTool':
             return 'crosshair';
-        case 'mesh':
-            return (h === 'move' || h === 'fadeCenter') ? 'grab'
-                : h === 'rot' ? 'crosshair'
-                : h === 'edgeW' ? 'ew-resize'
-                : h === 'edgeH' ? 'ns-resize'
-                : h ? 'move' : 'default';
-        case 'tunnel':
-            return (h === 'move' || h === 'fadeCenter') ? 'grab'
-                : h === 'rot' ? 'crosshair'
-                : h === 'edgeW' ? 'ew-resize'
-                : h === 'edgeH' ? 'ns-resize'
-                : h ? 'move' : 'default';
         default:
             return h ? 'grab' : 'default';
     }
@@ -676,6 +692,7 @@ const HIT_FNS = {
     crop:           hitTestCrop,
     viewport:       hitTestViewport,
     fade:           hitTestFade,
+    chroma:         hitTestChroma,
     doubleExposure: hitTestDoubleExposure,
     lineDrag:       hitTestLineDrag,
     vignette:       hitTestVignette,
@@ -703,7 +720,6 @@ const DRAG_FNS = {
     kaleidoscope:   onDragKaleidoscope,
     crop:           onDragCrop,
     viewport:       onDragViewport,
-    fade:           onDragFade,
     doubleExposure: onDragDoubleExposure,
     lineDrag:       onDragLineDrag,
     vignette:       onDragVignette,
@@ -937,7 +953,7 @@ function onDown(e) {
         };
     }
 
-    if (state.mode === 'drawTool') {
+    if (state.mode === 'drawTool' && state.handle === 'canvas') {
         const inst = getStack().find(i => i.id === state.instId);
         if (inst) onDrawToolDown(e, inst, canvas.getBoundingClientRect());
     }
@@ -984,21 +1000,42 @@ function onDrag(e) {
     const inst = getStack().find(i => i.id === state.instId);
     if (!inst) return;
 
-    // Fade region move — standalone Fade tool ('center') and every embedded 'fadeCenter'.
-    // Grab-offset so the box moves relative to the grab point instead of snapping its
-    // center to the cursor. Fade keys are <prefix>Fade{X,Y}, derivable from state.wKey.
-    const isFadeMove = state.handle === 'fadeCenter'
-        || (state.mode === 'fade' && state.handle === 'center');
-    if (isFadeMove && state.wKey) {
+    // Centralized fade-handle dragging for EVERY fade-using overlay. All fade handles use
+    // the standardized 'fade*' names; the fade param keys are <prefix>Fade{X,Y,W,H,Angle,V#}
+    // derivable from state.wKey. This is the single home for fade drag math so overlays
+    // don't each re-implement it.
+    const h = state.handle || '';
+    if (state.wKey && /^fade(Center|EdgeW|EdgeH|Rot|V\d+)$/.test(h)) {
         const base = state.wKey.slice(0, -1);        // '<prefix>Fade'
-        const xk = base + 'X', yk = base + 'Y';
         const W = uiOverlay.width, H = uiOverlay.height;
         const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-        const cx = (0.5 + (inst.params[xk] ?? 0) / 100) * W;
-        const cy = (0.5 - (inst.params[yk] ?? 0) / 100) * H;
-        const [gx, gy] = applyGrab(cx, cy, mx, my);
-        setInstanceParam(state.instId, xk, Math.round(Math.max(-50, Math.min(50,  (gx / W - 0.5) * 100))));
-        setInstanceParam(state.instId, yk, Math.round(Math.max(-50, Math.min(50, -(gy / H - 0.5) * 100))));
+        const cx = (0.5 + (inst.params[base + 'X'] ?? 0) / 100) * W;
+        const cy = (0.5 - (inst.params[base + 'Y'] ?? 0) / 100) * H;
+        const clampI = (lo, hi, v) => Math.round(Math.max(lo, Math.min(hi, v)));
+        if (h === 'fadeCenter') {
+            const [gx, gy] = applyGrab(cx, cy, mx, my);
+            setInstanceParam(state.instId, base + 'X', clampI(-50, 50,  (gx / W - 0.5) * 100));
+            setInstanceParam(state.instId, base + 'Y', clampI(-50, 50, -(gy / H - 0.5) * 100));
+        } else if (h === 'fadeEdgeW') {
+            setInstanceParam(state.instId, base + 'W', clampI(1, 200, Math.abs(mx - cx) / (W / 2) * 100));
+        } else if (h === 'fadeEdgeH') {
+            setInstanceParam(state.instId, base + 'H', clampI(1, 200, Math.abs(my - cy) / (H / 2) * 100));
+        } else if (h === 'fadeRot') {
+            let deg = Math.atan2(my - cy, mx - cx) * 180 / Math.PI + 90;
+            if (deg > 180)  deg -= 360;
+            if (deg < -180) deg += 360;
+            setInstanceParam(state.instId, base + 'Angle', Math.round(deg));
+        } else {
+            // fadeV{i}: write the vertex in the fade's rotated local frame (y-down).
+            const idx  = parseInt(h.slice(5), 10);
+            const rad  = (inst.params[base + 'Angle'] ?? 0) * Math.PI / 180;
+            const cosA = Math.cos(rad), sinA = Math.sin(rad);
+            const dx = mx - cx, dy = my - cy;
+            const lx =  dx * cosA + dy * sinA;
+            const ly = -dx * sinA + dy * cosA;
+            setInstanceParam(state.instId, base + `V${idx}x`, Math.round(lx / W * 100 * 100) / 100);
+            setInstanceParam(state.instId, base + `V${idx}y`, Math.round(ly / H * 100 * 100) / 100);
+        }
         return;
     }
 

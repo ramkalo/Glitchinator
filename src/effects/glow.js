@@ -81,8 +81,8 @@ export const glowEffect = {
     enabled: (p) => p.glowEnabled,
     uiGroups: [
         { keys: ['glowRadius', 'glowIntensity'] },
-        fade.uiGroup,
         blend.uiGroup,
+        fade.uiGroup,
     ],
     overlays: { fade: fade.overlay },
     bindUniforms: (gl, prog, p) => {

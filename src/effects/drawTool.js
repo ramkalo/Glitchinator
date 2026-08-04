@@ -144,8 +144,8 @@ export const drawToolEffect = {
         }
         return [
             { label: 'Brush', keys: brushKeys },
-            fade.uiGroup,
             blend.uiGroup,
+            fade.uiGroup,
         ];
     },
     canvas2d: applyDrawTool,

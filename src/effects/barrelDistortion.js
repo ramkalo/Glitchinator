@@ -12,8 +12,8 @@ export const barrelDistortionEffect = {
     uiGroups: [
         { keys: ['barrelDistortionEnabled', 'barrelDistortionStrength'] },
         { label: 'Shape & Position', keys: ['barrelDistortionMajor', 'barrelDistortionMinor', 'barrelDistortionAngle', 'barrelDistortionX', 'barrelDistortionY'] },
-        fade.uiGroup,
         blend.uiGroup,
+        fade.uiGroup,
     ],
     params: {
         barrelDistortionEnabled:   { default: false, label: 'Enable' },

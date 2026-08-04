@@ -1,7 +1,8 @@
 import { canvas } from '../../renderer/glstate.js';
 import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
-import { uiCtx, uiOverlay, syncSize, drawHandle, drawRotHandle, drawCornerHandle, strokeAntLine, HIT_RADIUS, isInsideFadeShape, pointInQuad } from '../overlayUtils.js';
+import { uiCtx, uiOverlay, syncSize, drawHandle, drawRotHandle, drawCornerHandle, strokeAntLine, HIT_RADIUS, pointInQuad } from '../overlayUtils.js';
+import { drawFadeShape, getFadeHandlePositions, hitTestFadeVertices, isInsideFade } from './fadeOverlay.js';
 import { lockedCornerDrag, lockedEdgeDrag } from './textBoxGeometry.js';
 
 export function textCorners(p, W, H) {
@@ -61,51 +62,10 @@ export function drawTextOverlay(p) {
     drawHandle(bottomMidX, bottomMidY);
     drawHandle(leftMidX,   leftMidY);
 
-    if (p[state.enabledKey]) {
-        const shape  = p[state.shapeKey] ?? 'ellipse';
-        const fAngle = (p[state.angleKey] ?? 0) * Math.PI / 180;
-        const cosA   = Math.cos(fAngle), sinA = Math.sin(fAngle);
-        const fcx    = (0.5 + p.textFadeX / 100) * W;
-        const fcy    = (0.5 - p.textFadeY / 100) * H;
-        const rotPt  = (lx, ly) => [fcx + lx * cosA - ly * sinA, fcy + lx * sinA + ly * cosA];
-
-        let fadeEdgeW, fadeEdgeH, fadeRotHandle, topEdge;
-        if (shape === 'ellipse') {
-            const a = (p[state.wKey] / 100) * W / 2;
-            const b = (p[state.hKey] / 100) * H / 2;
-            uiCtx.beginPath();
-            uiCtx.ellipse(fcx, fcy, Math.max(1, a), Math.max(1, b), fAngle, 0, Math.PI * 2);
-            strokeAntLine();
-            fadeEdgeW     = rotPt(a, 0);
-            fadeEdgeH     = rotPt(0, -b);
-            topEdge       = fadeEdgeH;
-            fadeRotHandle = rotPt(0, -(b + 22));
-        } else {
-            const hw = (p[state.wKey] / 100) * W / 2;
-            const hh = (p[state.hKey] / 100) * H / 2;
-            uiCtx.save();
-            uiCtx.translate(fcx, fcy);
-            uiCtx.rotate(fAngle);
-            uiCtx.beginPath();
-            uiCtx.rect(-hw, -hh, hw * 2, hh * 2);
-            strokeAntLine();
-            uiCtx.restore();
-            fadeEdgeW     = rotPt(hw, 0);
-            fadeEdgeH     = rotPt(0, -hh);
-            topEdge       = fadeEdgeH;
-            fadeRotHandle = rotPt(0, -(hh + 22));
-        }
-        uiCtx.beginPath();
-        uiCtx.moveTo(topEdge[0], topEdge[1]);
-        uiCtx.lineTo(fadeRotHandle[0], fadeRotHandle[1]);
-        uiCtx.strokeStyle = 'rgba(255,255,255,0.4)';
-        uiCtx.lineWidth   = 1;
-        uiCtx.stroke();
-
-        drawCornerHandle(fadeEdgeW[0], fadeEdgeW[1]);
-        drawCornerHandle(fadeEdgeH[0], fadeEdgeH[1]);
-        drawRotHandle(fadeRotHandle[0], fadeRotHandle[1]);
-    }
+    // Fade shape + handles (shared implementation; guarded on the enabled key).
+    const fcx = (0.5 + p.textFadeX / 100) * W;
+    const fcy = (0.5 - p.textFadeY / 100) * H;
+    drawFadeShape(p, fcx, fcy, W, H);
 }
 
 export function hitTestText(e) {
@@ -130,28 +90,15 @@ export function hitTestText(e) {
     if (d(leftMidX,   leftMidY)   <= HIT_RADIUS) return 'leftEdge';
 
     if (p[state.enabledKey]) {
-        const fAngle  = (p[state.angleKey] ?? 0) * Math.PI / 180;
-        const cosA    = Math.cos(fAngle), sinA = Math.sin(fAngle);
-        const fcx     = (0.5 + p.textFadeX / 100) * W;
-        const fcy     = (0.5 - p.textFadeY / 100) * H;
-        const rotPt   = (lx, ly) => [fcx + lx * cosA - ly * sinA, fcy + lx * sinA + ly * cosA];
-        const shape   = p[state.shapeKey] ?? 'ellipse';
-        const fa = (p[state.wKey] / 100) * W / 2;
-        const fb = (p[state.hKey] / 100) * H / 2;
-        let fadeEdgeW, fadeEdgeH, fadeRotHandle;
-        if (shape === 'ellipse') {
-            fadeEdgeW     = rotPt(fa, 0);
-            fadeEdgeH     = rotPt(0, -fb);
-            fadeRotHandle = rotPt(0, -(fb + 22));
-        } else {
-            fadeEdgeW     = rotPt(fa, 0);
-            fadeEdgeH     = rotPt(0, -fb);
-            fadeRotHandle = rotPt(0, -(fb + 22));
-        }
-        if (d(fadeRotHandle[0], fadeRotHandle[1]) <= HIT_RADIUS) return 'fadeRot';
-        if (d(fadeEdgeW[0],     fadeEdgeW[1])     <= HIT_RADIUS) return 'fadeEdgeW';
-        if (d(fadeEdgeH[0],     fadeEdgeH[1])     <= HIT_RADIUS) return 'fadeEdgeH';
-        if (isInsideFadeShape(mx, my, fcx, fcy, fa, fb, fAngle, shape !== 'ellipse')) return 'fadeCenter';
+        const fcx = (0.5 + p.textFadeX / 100) * W;
+        const fcy = (0.5 - p.textFadeY / 100) * H;
+        const vHit = hitTestFadeVertices(p, mx, my, fcx, fcy, W, H);
+        if (vHit) return vHit;
+        const { edgeW, edgeH, rotHandle } = getFadeHandlePositions(p, fcx, fcy, W, H);
+        if (d(rotHandle[0], rotHandle[1]) <= HIT_RADIUS) return 'fadeRot';
+        if (edgeW && d(edgeW[0], edgeW[1]) <= HIT_RADIUS) return 'fadeEdgeW';
+        if (edgeH && d(edgeH[0], edgeH[1]) <= HIT_RADIUS) return 'fadeEdgeH';
+        if (isInsideFade(p, mx, my, fcx, fcy, W, H)) return 'fadeCenter';
     }
 
     // Anywhere inside the box moves it — checked last so the corner, edge and
@@ -249,21 +196,6 @@ export function onDragText(e, inst, rect) {
         setInstanceParam(state.instId, 'textTLy', state.dragAnchor.tly0 + dy);
         setInstanceParam(state.instId, 'textBLx', state.dragAnchor.blx0 + dx);
         setInstanceParam(state.instId, 'textBLy', state.dragAnchor.bly0 + dy);
-    } else if (state.handle === 'fadeCenter') {
-        setInstanceParam(state.instId, 'textFadeX', Math.round(Math.max(-50, Math.min(50,  (mx / W - 0.5) * 100))));
-        setInstanceParam(state.instId, 'textFadeY', Math.round(Math.max(-50, Math.min(50, -(my / H - 0.5) * 100))));
-    } else if (state.handle === 'fadeEdgeW') {
-        const fcx = (0.5 + inst.params.textFadeX / 100) * W;
-        setInstanceParam(state.instId, state.wKey, Math.round(Math.max(1, Math.min(200, Math.abs(mx - fcx) / (W / 2) * 100))));
-    } else if (state.handle === 'fadeEdgeH') {
-        const fcy = (0.5 - inst.params.textFadeY / 100) * H;
-        setInstanceParam(state.instId, state.hKey, Math.round(Math.max(1, Math.min(200, Math.abs(my - fcy) / (H / 2) * 100))));
-    } else if (state.handle === 'fadeRot') {
-        const fcx = (0.5 + inst.params.textFadeX / 100) * W;
-        const fcy = (0.5 - inst.params.textFadeY / 100) * H;
-        let deg = Math.atan2(my - fcy, mx - fcx) * 180 / Math.PI + 90;
-        if (deg > 180)  deg -= 360;
-        if (deg < -180) deg += 360;
-        setInstanceParam(state.instId, state.angleKey, Math.round(deg));
     }
+    // Fade handles (fadeCenter/fadeEdge*/fadeRot/fadeV#) are dragged centrally in canvasPicker.
 }

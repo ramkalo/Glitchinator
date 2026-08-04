@@ -86,7 +86,7 @@ export const kaleidoscopeEffect = {
         } else {
             groups.push({ label: 'Shape', keys: p.kKalShape === 'polygon' ? ['kKalShape', 'kKalSides'] : ['kKalShape'] });
         }
-        groups.push(fade.uiGroup, blend.uiGroup);
+        groups.push(blend.uiGroup, fade.uiGroup);
         return groups;
     },
 

@@ -267,8 +267,8 @@ export const matrixRainEffect = {
         { label: 'Inject',   keys: ['matrixRainInjectEnabled', 'matrixRainInjectPercent', 'matrixRainInjectSeed', 'matrixRainSpaceInject'] },
         { label: 'Layout',   keys: ['matrixRainDirection', 'matrixRainOrder', 'matrixRainSize', 'matrixRainCharSpacing', 'matrixRainLineSpacing', 'matrixRainWordSpacing', 'matrixRainFont'] },
         { label: 'Color',    keys: ['matrixRainColor', 'matrixRainCharOpacity'] },
-        fade.uiGroup,
         blend.uiGroup,
+        fade.uiGroup,
     ],
 
     params: {
