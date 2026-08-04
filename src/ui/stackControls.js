@@ -744,22 +744,6 @@ export function buildEffectBody(inst, onRebuild) {
         }
     }
 
-    if (inst.effectName === 'colorPalette') {
-        // Preset selector and "Randomize All Colors" read as one control, so move
-        // the button into the selector's row and drop its now-empty group.
-        const randomGroup  = content.querySelector('[data-key="paletteRandomize"]');
-        const presetSelect = content.querySelector('[data-inst-param="palettePreset"]');
-        const presetRow    = presetSelect?.closest('.control-row');
-        const randomBtn    = randomGroup?.querySelector('button');
-        if (randomGroup && presetRow && randomBtn) {
-            presetSelect.style.flex = '1';
-            presetSelect.style.minWidth = '0';
-            randomBtn.style.flexShrink = '0';
-            presetRow.appendChild(randomBtn);
-            randomGroup.remove();
-        }
-    }
-
     if (inst.effectName === 'colorGel' && gelMode(inst.params) !== 'solid') {
         // Where each color sits along the gradient — the same numbers the canvas
         // shape edits. Colors 1 and 5 anchor the gradient; 2–4 opt out through
@@ -926,35 +910,6 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
     const label = labelOverride ?? schema.label ?? key;
     const currentVal = inst.params[key];
 
-    // Randomize every palette color. Moved inline with the preset selector by the
-    // colorPalette block in buildEffectBody.
-    if (key === 'paletteRandomize') {
-        const group = document.createElement('div');
-        group.className = 'control-group';
-        group.dataset.key = 'paletteRandomize';
-
-        const row = document.createElement('div');
-        row.className = 'control-row';
-        row.style.gap = '6px';
-
-        const randomBtn = document.createElement('button');
-        randomBtn.className = 'btn';
-        randomBtn.textContent = label;
-        randomBtn.disabled = inst.params.palettePreset !== 'custom';
-        randomBtn.addEventListener('click', () => {
-            saveState();
-            for (let i = 0; i < 8; i++) {
-                const hex = '#' + Math.floor(Math.random() * 0x1000000).toString(16).padStart(6, '0');
-                setInstanceParam(inst.id, `palette${i}`, hex);
-            }
-            if (onRebuild) onRebuild();
-        });
-
-        row.appendChild(randomBtn);
-        group.appendChild(row);
-        return group;
-    }
-
     // "Pull From <region>" — sample the palette out of the image reaching this
     // instance. Target mode adds a draggable region box over the canvas.
     if (key === 'paletteFromImage') {
@@ -1046,6 +1001,7 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         group.dataset.key = 'paletteSortByLuminance';
         const row = document.createElement('div');
         row.className = 'control-row';
+        row.style.gap = '6px';
         const sortBtn = document.createElement('button');
         sortBtn.className = 'btn';
         sortBtn.textContent = label;
@@ -1097,9 +1053,36 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
             if (onRebuild) onRebuild();
         });
 
+        // Randomize every palette color. Writes custom colors, so it drops out of
+        // any named preset (matches Pull / Sort / Paste).
+        const randomBtn = document.createElement('button');
+        randomBtn.className = 'btn';
+        randomBtn.textContent = 'Randomize All Colors';
+        randomBtn.addEventListener('click', () => {
+            saveState();
+            setInstanceParam(inst.id, 'palettePreset', 'custom');
+            for (let i = 0; i < 8; i++) {
+                const hex = '#' + Math.floor(Math.random() * 0x1000000).toString(16).padStart(6, '0');
+                setInstanceParam(inst.id, `palette${i}`, hex);
+            }
+            if (onRebuild) onRebuild();
+        });
+
+        // Four buttons in one row: let them share the width and shrink (with a
+        // smaller font and wrapping labels) so the row never overflows the panel.
+        for (const btn of [sortBtn, reverseBtn, shuffleBtn, randomBtn]) {
+            btn.style.flex = '1 1 0';
+            btn.style.minWidth = '0';
+            btn.style.padding = '6px 4px';
+            btn.style.fontSize = '0.7rem';
+            btn.style.lineHeight = '1.15';
+            btn.style.whiteSpace = 'normal';
+        }
+
         row.appendChild(sortBtn);
         row.appendChild(reverseBtn);
         row.appendChild(shuffleBtn);
+        row.appendChild(randomBtn);
         group.appendChild(row);
         return group;
     }

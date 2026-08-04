@@ -132,7 +132,7 @@ export const colorPaletteEffect = {
     },
     enabled: (p) => p.paletteEnabled,
     uiGroups: [
-        { label: 'Preset Palette',        keys: ['palettePreset', 'paletteRandomize'] },
+        { label: 'Preset Palette',        keys: ['palettePreset'] },
         { label: 'Color from Image',      keys: ['paletteFromImage'] },
         { label: 'Colors',                keys: [...Array.from({ length: 8 }, (_, i) => `palette${i}`), 'paletteSortByLuminance'] },
         { label: 'Batch Hex Update',      keys: ['paletteCopyHex', 'palettePaste'] },
