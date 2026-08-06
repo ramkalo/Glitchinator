@@ -796,20 +796,20 @@ export function buildEffectBody(inst, onRebuild) {
         }
     }
 
-    if (inst.effectName === 'watermark') {
+    if (inst.effectName === 'ghostmark') {
         // Show Distortion only for the clear (refract/shift) styles; Static Grain only for the
         // static ink colors; Density only when Repeat is on.
         const grp = (k) => content.querySelector(`[data-inst-param="${k}"]`)?.closest('.control-group, .checkbox-label');
-        const distortEl = grp('watermarkDistort');
-        const grainEl   = grp('watermarkGrain');
-        const densityEl = grp('watermarkDensity');
-        const styleSel  = content.querySelector('[data-inst-param="watermarkStyle"]');
-        const colorSel  = content.querySelector('[data-inst-param="watermarkColor"]');
-        const repeatChk = content.querySelector('[data-inst-param="watermarkRepeat"]');
+        const distortEl = grp('ghostmarkDistort');
+        const grainEl   = grp('ghostmarkGrain');
+        const densityEl = grp('ghostmarkDensity');
+        const styleSel  = content.querySelector('[data-inst-param="ghostmarkStyle"]');
+        const colorSel  = content.querySelector('[data-inst-param="ghostmarkColor"]');
+        const repeatChk = content.querySelector('[data-inst-param="ghostmarkRepeat"]');
         const upd = () => {
-            const style  = styleSel?.value ?? inst.params.watermarkStyle;
-            const color  = colorSel?.value ?? inst.params.watermarkColor;
-            const repeat = repeatChk ? repeatChk.checked : inst.params.watermarkRepeat;
+            const style  = styleSel?.value ?? inst.params.ghostmarkStyle;
+            const color  = colorSel?.value ?? inst.params.ghostmarkColor;
+            const repeat = repeatChk ? repeatChk.checked : inst.params.ghostmarkRepeat;
             if (distortEl) distortEl.style.display = (style === 'refract' || style === 'shift') ? '' : 'none';
             if (grainEl)   grainEl.style.display   = (color === 'greyStatic' || color === 'imageStatic') ? '' : 'none';
             if (densityEl) densityEl.style.display = repeat ? '' : 'none';
@@ -820,7 +820,7 @@ export function buildEffectBody(inst, onRebuild) {
         upd();
     }
 
-    if (inst.effectName === 'metadata') {
+    if (inst.effectName === 'overwrite') {
         // "Copy metadata from loaded image" — when turned on, populate the editable fields from
         // the loaded image's original metadata so the user can review/edit before export.
         const FIELD_MAP = {

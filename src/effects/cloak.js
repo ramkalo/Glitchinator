@@ -1,41 +1,66 @@
-// Redact — strips an image of hidden data, tracking, and metadata before the
-// user shares, uploads, or saves it. SINGLETON.
+// Cloak — invisible in-pixel payloads (Layer 2). SINGLETON.
 //
-// The defensive counter-tool to BXTRXT's own Embed (Hidden) and Metadata effects (and to
-// third-party stego / EXIF in incoming images). Renders nothing; a pass-through whose params
-// are consumed at export time (src/ui/export.js), exactly like Embed (Hidden) and Metadata.
+// Renders nothing; a pass-through whose params are read at export time (src/ui/export.js).
+// Five schemes give artists a palette of trade-offs between capacity, stealth, and robustness:
 //
-// What it removes:
-//   • Hidden pixel payloads — LSB steganography (standard + keyed) and the robust DCT
-//     watermark — via src/util/launder.js (randomizes the LSB plane + scrambles the
-//     mid-frequency band). Invisible at default strength.
-//   • File metadata — EXIF / XMP / IPTC / GPS / thumbnails / PNG text chunks — and any
-//     trailing appended data (polyglots). These are discarded for free because export rebuilds
-//     the file from canvas pixels; Launder additionally suppresses the Metadata effect.
-//   • Optionally, fragile / unknown stego — via a JPEG re-encode ("harden").
+//   Spatial / LSB family — PNG-only. Exact pixels, so any re-encode (a social-media repost,
+//   a screenshot, a JPEG save) destroys them. Great for lossless channels: a PNG behind a
+//   download link, a chat-app *file attachment* (not the inline preview), direct transfer.
+//     'standard'   — plain LSB in natural order, documented format, optional AES passphrase.
+//     'randomized' — LSB scattered by a password-seeded permutation (private without the key).
+//     'edge'       — LSB hidden only in high-gradient / textured pixels (Sobel), harder to spot.
+//     'pvd'        — pixel-value differencing: more bits where texture is busy (high capacity).
 //
-// When Launder is enabled it supersedes Embed (Hidden) and (unless "Keep metadata fields" is
-// on) Metadata: laundering an image you also asked to embed into would be contradictory.
+//   Frequency domain — survives moderate JPEG re-compression + resize (e.g. a repost):
+//     'robust'     — DCT watermark (src/util/robustWatermark.js). SHORT TEXT only (~29 chars),
+//                    best-effort. This is the only scheme that survives a social-media re-upload.
+//
+// Single shared pixel resource, so only one instance is allowed — hence `singleton: true`.
 
 export const cloakEffect = {
     name: 'cloak',
-    label: 'Redact',
+    label: 'Cloak',
     kind: 'glsl',
     singleton: true,
     paramKeys: [],
     params: {
-        cloakEnabled:       { default: false, label: 'Enable' },
-        cloakScrubHidden:   { default: true,  label: 'Scrub hidden data (LSB + watermark)' },
-        cloakStripMetadata: { default: true,  label: 'Strip metadata (EXIF/XMP/GPS)' },
-        cloakStrength:      { default: 'medium', label: 'Strength', options: [['low', 'Low (most invisible)'], ['medium', 'Medium'], ['high', 'High (most thorough)']] },
-        cloakHarden:        { default: false, label: 'Harden (re-encode JPEG — max scrub)' },
+        cloakEnabled:    { default: false, label: 'Enable' },
+        cloakType:       { default: 'text', label: 'Type', options: [['text', 'Text'], ['image', 'Image']] },
+        cloakText:       { default: '', type: 'text', label: 'Hidden Text' },
+        cloakImage:      { default: null, type: 'imageData', label: 'Hidden Image' },
+        cloakScheme:     { default: 'standard', label: 'Scheme', options: [
+            ['standard',   'Standard LSB (documented)'],
+            ['randomized', 'Randomized LSB (password-seeded)'],
+            ['edge',       'Edge-Adaptive (Sobel)'],
+            ['pvd',        'PVD (high capacity)'],
+            ['robust',     'Resilient (survives re-compression)'],
+        ] },
+        cloakPassphrase: { default: '', type: 'password', label: 'Passphrase (optional)' },
+        cloakKey:        { default: '', type: 'password', label: 'Password / seed' },
+        cloakStrength:   { default: 'medium', label: 'Strength', options: [['low', 'Low (most invisible)'], ['medium', 'Medium'], ['high', 'High (most durable)']] },
     },
     // Never renders — the work happens at export. Kept out of the render pass entirely.
     enabled: () => false,
-    uiGroups: [
-        { label: 'Protections', keys: ['cloakScrubHidden', 'cloakStripMetadata'] },
-        { label: 'Strength', keys: ['cloakStrength'] },
-        { label: 'Output', keys: ['cloakHarden'] },
-    ],
+    uiGroups: (p) => {
+        const scheme = p.cloakScheme || 'standard';
+        const groups = [];
+        if (scheme === 'robust') {
+            // Resilient is short-text only; image/passphrase/key don't apply.
+            groups.push({ label: 'Payload — short text (~29 chars), survives a repost', keys: ['cloakText'] });
+            groups.push({ label: 'Scheme', keys: ['cloakScheme'] });
+            groups.push({ label: 'Strength', keys: ['cloakStrength'] });
+        } else {
+            groups.push({ label: 'Content', keys: ['cloakType'] });
+            groups.push((p.cloakType || 'text') === 'image'
+                ? { label: 'Payload — PNG only; a re-upload destroys it', keys: ['cloakImage'] }
+                : { label: 'Payload — PNG only; a re-upload destroys it', keys: ['cloakText'] });
+            groups.push({ label: 'Scheme', keys: ['cloakScheme'] });
+            // Standard uses an AES passphrase; the scattered schemes use a password seed.
+            groups.push(scheme === 'standard'
+                ? { label: 'Encryption', keys: ['cloakPassphrase'] }
+                : { label: 'Password (seeds the hiding pattern)', keys: ['cloakKey'] });
+        }
+        return groups;
+    },
     glsl: `void main() { fragColor = texture(uTex, vUV); }`,
 };

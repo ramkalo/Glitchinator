@@ -16,7 +16,7 @@ import { drawChroma, hitTestChroma                                        } from
 import { drawVignette,       hitTestVignette,       onDragVignette       } from './overlays/vignetteOverlay.js';
 import { drawCRTCurvature,   hitTestCRTCurvature,   onDragCRTCurvature  } from './overlays/crtOverlay.js';
 import { drawCorrupted,      hitTestCorrupted                            } from './overlays/corruptedOverlay.js';
-import { drawWatermark,      hitTestWatermark,       onDragWatermark,     watermarkCenterAnchor, watermarkRotAnchor, watermarkSizeAnchor } from './overlays/watermarkOverlay.js';
+import { drawGhostmark,      hitTestGhostmark,       onDragGhostmark,     ghostmarkCenterAnchor, ghostmarkRotAnchor, ghostmarkSizeAnchor } from './overlays/ghostmarkOverlay.js';
 import { drawTextOverlay,    hitTestText,            onDragText,          textCorners } from './overlays/textOverlay.js';
 import { drawMatrixRain,       hitTestMatrixRain,       onDragMatrixRain   } from './overlays/matrixRainOverlay.js';
 import { drawViewport,       hitTestViewport,        onDragViewport,      resetPolygonVertices } from './overlays/viewportOverlay.js';
@@ -74,7 +74,7 @@ onStackChange((key) => {
     if (state.mode === 'vignette')      drawVignette(inst.params);
     if (state.mode === 'barrelDistortion')  drawCRTCurvature(inst.params);
     if (state.mode === 'corrupted')     drawCorrupted(inst.params);
-    if (state.mode === 'watermark')     drawWatermark(inst.params);
+    if (state.mode === 'ghostmark')     drawGhostmark(inst.params);
     if (state.mode === 'text')          drawTextOverlay(inst.params);
     if (state.mode === 'doubleExposure') drawDoubleExposure(inst.params);
     if (state.mode === 'shapeSticker') {
@@ -261,13 +261,13 @@ export function hideCorruptedOverlay() {
     if (state.mode === 'corrupted') _hideActive();
 }
 
-export function showWatermarkOverlay(inst) {
-    _activate('watermark', inst, 'watermarkX', 'watermarkY');
-    drawWatermark(inst.params);
+export function showGhostmarkOverlay(inst) {
+    _activate('ghostmark', inst, 'ghostmarkX', 'ghostmarkY');
+    drawGhostmark(inst.params);
 }
 
-export function hideWatermarkOverlay() {
-    if (state.mode === 'watermark') _hideActive();
+export function hideGhostmarkOverlay() {
+    if (state.mode === 'ghostmark') _hideActive();
 }
 
 export function showTextOverlay(inst) {
@@ -709,7 +709,7 @@ const HIT_FNS = {
     vignette:       hitTestVignette,
     barrelDistortion:   hitTestCRTCurvature,
     corrupted:      hitTestCorrupted,
-    watermark:      hitTestWatermark,
+    ghostmark:      hitTestGhostmark,
     text:           hitTestText,
     shapeSticker:   hitTestShapeSticker,
     matrixRain:     hitTestMatrixRain,
@@ -739,7 +739,7 @@ const DRAG_FNS = {
     text:           onDragText,
     shapeSticker:   onDragShapeSticker,
     matrixRain:     onDragMatrixRain,
-    watermark:      onDragWatermark,
+    ghostmark:      onDragGhostmark,
     smearTwist:onDragDigitalSmear,
     filmSoup:       onDragFilmSoup,
     resin:          onDragResin,
@@ -768,7 +768,7 @@ const DRAW_FNS = {
     doubleExposure: drawDoubleExposure,
     shapeSticker:   drawShapeSticker,
     corrupted:      drawCorrupted,
-    watermark:      drawWatermark,
+    ghostmark:      drawGhostmark,
     barrelDistortion:   drawCRTCurvature,
     smearTwist:drawDigitalSmear,
     filmSoup:       drawFilmSoup,
@@ -947,15 +947,15 @@ function onDown(e) {
     }
 
     // Ghostmark: capture the grab offset (move) or the rotation/size start reference.
-    if (state.mode === 'watermark' && (h === 'center' || h === 'rot' || h === 'size')) {
+    if (state.mode === 'ghostmark' && (h === 'center' || h === 'rot' || h === 'size')) {
         const rect2 = canvas.getBoundingClientRect();
         const inst2 = getStack().find(i => i.id === state.instId);
         const p2    = inst2?.params ?? {};
         const mx2   = e.clientX - rect2.left, my2 = e.clientY - rect2.top;
         const W2    = uiOverlay.width, H2 = uiOverlay.height;
-        state.dragAnchor = h === 'rot'  ? watermarkRotAnchor(p2, mx2, my2, W2, H2)
-                         : h === 'size' ? watermarkSizeAnchor(p2, mx2, my2, W2, H2)
-                         :                watermarkCenterAnchor(p2, mx2, my2, W2, H2);
+        state.dragAnchor = h === 'rot'  ? ghostmarkRotAnchor(p2, mx2, my2, W2, H2)
+                         : h === 'size' ? ghostmarkSizeAnchor(p2, mx2, my2, W2, H2)
+                         :                ghostmarkCenterAnchor(p2, mx2, my2, W2, H2);
     }
 
     // Special dragAnchor setup for text box drags. Corners need it too: with

@@ -6,7 +6,7 @@ import { buildEffectBody, labelPreviewText } from './stackControls.js';
 import { blitOriginalToScreen } from '../renderer/webgl.js';
 import { processImageImmediate } from '../renderer/pipeline.js';
 import { originalImage } from '../renderer/glstate.js';
-import { showFadeOverlay, hideFadeOverlay, showCropOverlay, hideCropOverlay, showViewportOverlay, hideViewportOverlay, showMatrixRainOverlay, hideMatrixRainOverlay, showLineDragOverlay, hideLineDragOverlay, showChromaOverlay, hideChromaOverlay, showVignetteOverlay, hideVignetteOverlay, showCorruptedOverlay, hideCorruptedOverlay, showWatermarkOverlay, hideWatermarkOverlay, showCRTCurvatureOverlay, hideCRTCurvatureOverlay, showTextOverlay, hideTextOverlay, showDoubleExposureOverlay, hideDoubleExposureOverlay, showShapeStickerOverlay, hideShapeStickerOverlay, showKaleidoscopeOverlay, hideKaleidoscopeOverlay, showDigitalSmearOverlay, hideDigitalSmearOverlay, showDrawToolOverlay, hideDrawToolOverlay, showMeshOverlay, hideMeshOverlay, showTunnelOverlay, hideTunnelOverlay, showFilmSoupOverlay, hideFilmSoupOverlay, showColorGelOverlay, hideColorGelOverlay, showHalftoneOverlay, hideHalftoneOverlay, showWrinkleOverlay, hideWrinkleOverlay, showCausticsOverlay, hideCausticsOverlay, showResinOverlay, hideResinOverlay, showGlassBlobOverlay, hideGlassBlobOverlay, showCutOverlay, hideCutOverlay } from './canvasPicker.js';
+import { showFadeOverlay, hideFadeOverlay, showCropOverlay, hideCropOverlay, showViewportOverlay, hideViewportOverlay, showMatrixRainOverlay, hideMatrixRainOverlay, showLineDragOverlay, hideLineDragOverlay, showChromaOverlay, hideChromaOverlay, showVignetteOverlay, hideVignetteOverlay, showCorruptedOverlay, hideCorruptedOverlay, showGhostmarkOverlay, hideGhostmarkOverlay, showCRTCurvatureOverlay, hideCRTCurvatureOverlay, showTextOverlay, hideTextOverlay, showDoubleExposureOverlay, hideDoubleExposureOverlay, showShapeStickerOverlay, hideShapeStickerOverlay, showKaleidoscopeOverlay, hideKaleidoscopeOverlay, showDigitalSmearOverlay, hideDigitalSmearOverlay, showDrawToolOverlay, hideDrawToolOverlay, showMeshOverlay, hideMeshOverlay, showTunnelOverlay, hideTunnelOverlay, showFilmSoupOverlay, hideFilmSoupOverlay, showColorGelOverlay, hideColorGelOverlay, showHalftoneOverlay, hideHalftoneOverlay, showWrinkleOverlay, hideWrinkleOverlay, showCausticsOverlay, hideCausticsOverlay, showResinOverlay, hideResinOverlay, showGlassBlobOverlay, hideGlassBlobOverlay, showCutOverlay, hideCutOverlay } from './canvasPicker.js';
 
 let _expandedId = null;
 
@@ -357,7 +357,7 @@ export function renderStackList() {
     if (newEffect !== 'vignette')     hideVignetteOverlay();
     if (newEffect !== 'barrelDistortion') hideCRTCurvatureOverlay();
     if (newEffect !== 'corrupted')    hideCorruptedOverlay();
-    if (newEffect !== 'watermark')    hideWatermarkOverlay();
+    if (newEffect !== 'ghostmark')    hideGhostmarkOverlay();
     if (newEffect !== 'doubleExposure') hideDoubleExposureOverlay();
     if (newEffect !== 'shapeSticker')   hideShapeStickerOverlay();
     if (newEffect !== 'kaleidoscope')   hideKaleidoscopeOverlay();
@@ -393,7 +393,7 @@ export function renderStackList() {
     else if (newEffect === 'vignette')     showVignetteOverlay(expandedInst);
     else if (newEffect === 'barrelDistortion') showCRTCurvatureOverlay(expandedInst);
     else if (newEffect === 'corrupted')    showCorruptedOverlay(expandedInst);
-    else if (newEffect === 'watermark')    showWatermarkOverlay(expandedInst);
+    else if (newEffect === 'ghostmark')    showGhostmarkOverlay(expandedInst);
     else if (newEffect === 'shapeSticker')  showShapeStickerOverlay(expandedInst);
     else if (newEffect === 'kaleidoscope')  showKaleidoscopeOverlay(expandedInst);
     else if (newEffect === 'smearTwist') showDigitalSmearOverlay(expandedInst);

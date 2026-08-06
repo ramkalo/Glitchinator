@@ -1,6 +1,6 @@
 // Reveal tool — reads back embedded data from the image currently loaded in the app, so
-// hidden/encrypted payloads (and standard metadata) can be recovered. Round-trips the Embed
-// (Hidden) and Metadata effects. Operates on the loaded source image (pixels + original file
+// hidden/encrypted payloads (and standard metadata) can be recovered. Round-trips the Cloak
+// and Overwrite effects. Operates on the loaded source image (pixels + original file
 // bytes), not on a separately-uploaded file.
 
 import { decodePayload } from '../util/steg.js';
@@ -74,14 +74,14 @@ async function runReveal() {
         metaSections.push('<div style="color:var(--text-dim);">No source file metadata (blank canvas or generated image).</div>');
     }
 
-    // Hidden payload (needs pixels). Tries the robust DCT watermark and the LSB schemes.
+    // Hidden payload (needs pixels). Tries the Resilient DCT scheme and the LSB schemes.
     const payloadSections = [];
     try {
         const imgData = loadedImageData();
 
         const robust = imgData ? decodeRobust(imgData) : null;
         if (robust) {
-            payloadSections.push(`<h3>Robust watermark text</h3><pre style="white-space:pre-wrap;word-break:break-word;">${esc(robust.text)}</pre>`);
+            payloadSections.push(`<h3>Resilient hidden text</h3><pre style="white-space:pre-wrap;word-break:break-word;">${esc(robust.text)}</pre>`);
         }
 
         let lsb = null, lsbErr = null;

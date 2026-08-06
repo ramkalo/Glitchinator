@@ -10,17 +10,17 @@ import { uiCtx, uiOverlay, syncSize, drawHandle, drawRotHandle, HIT_RADIUS } fro
 const ROT_MARGIN  = 26;
 const SIZE_MARGIN = 18;
 
-const rad = (p) => (p.watermarkAngle ?? 0) * Math.PI / 180;
+const rad = (p) => (p.ghostmarkAngle ?? 0) * Math.PI / 180;
 
 function refCenter(p, W, H) {
-    if (p.watermarkRepeat) return [W / 2, H / 2];
-    return [(0.5 + (p.watermarkX ?? 0) / 100) * W, (0.5 - (p.watermarkY ?? 0) / 100) * H];
+    if (p.ghostmarkRepeat) return [W / 2, H / 2];
+    return [(0.5 + (p.ghostmarkX ?? 0) / 100) * W, (0.5 - (p.ghostmarkY ?? 0) / 100) * H];
 }
 
 // Half-extents of the mark box, matching the effect's rasterizer sizing (a rough glyph metric).
 function boxExtents(p, W, H) {
-    const fontPx  = Math.max(6, (p.watermarkSize / 100) * Math.min(W, H));
-    const lines   = String(p.watermarkText ?? '').split('\n');
+    const fontPx  = Math.max(6, (p.ghostmarkSize / 100) * Math.min(W, H));
+    const lines   = String(p.ghostmarkText ?? '').split('\n');
     const longest = lines.reduce((a, b) => (b.length > a.length ? b : a), '');
     const w = Math.max(fontPx, longest.length * fontPx * 0.55);
     const h = fontPx * 1.25 * lines.length;
@@ -42,7 +42,7 @@ function layout(p, W, H) {
     return { cx, cy, hw, hh, ang, rx, ry, sx, sy };
 }
 
-export function drawWatermark(p) {
+export function drawGhostmark(p) {
     syncSize();
     const W = uiOverlay.width, H = uiOverlay.height;
     uiCtx.clearRect(0, 0, W, H);
@@ -64,10 +64,10 @@ export function drawWatermark(p) {
 
     drawRotHandle(rx, ry);                          // rotation
     drawHandle(sx, sy);                             // size
-    if (!p.watermarkRepeat) drawHandle(cx, cy);     // move (single mode only)
+    if (!p.ghostmarkRepeat) drawHandle(cx, cy);     // move (single mode only)
 }
 
-export function hitTestWatermark(e) {
+export function hitTestGhostmark(e) {
     const inst = getStack().find(i => i.id === state.instId);
     if (!inst) return null;
     const p = inst.params;
@@ -78,7 +78,7 @@ export function hitTestWatermark(e) {
 
     if (Math.hypot(mx - rx, my - ry) <= HIT_RADIUS) return 'rot';
     if (Math.hypot(mx - sx, my - sy) <= HIT_RADIUS) return 'size';
-    if (!p.watermarkRepeat) {
+    if (!p.ghostmarkRepeat) {
         const c = Math.cos(-ang), s = Math.sin(-ang);
         const dx = mx - cx, dy = my - cy;
         const lx = dx * c - dy * s, ly = dx * s + dy * c;
@@ -88,40 +88,40 @@ export function hitTestWatermark(e) {
 }
 
 // ── drag anchors (called from canvasPicker onDown) ───────────────────────────────
-export function watermarkCenterAnchor(p, mx, my, W, H) {
+export function ghostmarkCenterAnchor(p, mx, my, W, H) {
     const [cx, cy] = refCenter(p, W, H);
     return { grabDX: cx - mx, grabDY: cy - my };
 }
-export function watermarkRotAnchor(p, mx, my, W, H) {
+export function ghostmarkRotAnchor(p, mx, my, W, H) {
     const [cx, cy] = refCenter(p, W, H);
-    return { pivotX: cx, pivotY: cy, startAngle: p.watermarkAngle ?? 0,
+    return { pivotX: cx, pivotY: cy, startAngle: p.ghostmarkAngle ?? 0,
              startCursor: Math.atan2(my - cy, mx - cx) * 180 / Math.PI };
 }
-export function watermarkSizeAnchor(p, mx, my, W, H) {
+export function ghostmarkSizeAnchor(p, mx, my, W, H) {
     const [cx, cy] = refCenter(p, W, H);
     return { pivotX: cx, pivotY: cy, startDist: Math.max(1, Math.hypot(mx - cx, my - cy)),
-             startSize: p.watermarkSize ?? 6 };
+             startSize: p.ghostmarkSize ?? 6 };
 }
 
-export function onDragWatermark(e, inst, rect) {
+export function onDragGhostmark(e, inst, rect) {
     const mx = e.clientX - rect.left, my = e.clientY - rect.top;
     const W = uiOverlay.width, H = uiOverlay.height;
     const a = state.dragAnchor;
 
     if (state.handle === 'center') {
         const gx = mx + (a?.grabDX ?? 0), gy = my + (a?.grabDY ?? 0);
-        setInstanceParam(state.instId, 'watermarkX', Math.round(Math.max(-50, Math.min(50,  (gx / W - 0.5) * 100))));
-        setInstanceParam(state.instId, 'watermarkY', Math.round(Math.max(-50, Math.min(50, -(gy / H - 0.5) * 100))));
+        setInstanceParam(state.instId, 'ghostmarkX', Math.round(Math.max(-50, Math.min(50,  (gx / W - 0.5) * 100))));
+        setInstanceParam(state.instId, 'ghostmarkY', Math.round(Math.max(-50, Math.min(50, -(gy / H - 0.5) * 100))));
     } else if (state.handle === 'rot') {
         if (!a) return;
         const cursor = Math.atan2(my - a.pivotY, mx - a.pivotX) * 180 / Math.PI;
         let deg = a.startAngle + (cursor - a.startCursor);
         deg = ((deg + 180) % 360 + 360) % 360 - 180;
-        setInstanceParam(state.instId, 'watermarkAngle', Math.round(deg));
+        setInstanceParam(state.instId, 'ghostmarkAngle', Math.round(deg));
     } else if (state.handle === 'size') {
         if (!a) return;
         const dist = Math.hypot(mx - a.pivotX, my - a.pivotY);
         const size = Math.max(1, Math.min(50, a.startSize * dist / a.startDist));
-        setInstanceParam(state.instId, 'watermarkSize', Math.round(size * 2) / 2);
+        setInstanceParam(state.instId, 'ghostmarkSize', Math.round(size * 2) / 2);
     }
 }

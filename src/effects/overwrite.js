@@ -1,4 +1,4 @@
-// Metadata — editable file-container metadata (Layer 3). SINGLETON.
+// Overwrite — editable file-container metadata (Layer 3). SINGLETON.
 //
 // Renders nothing; a pass-through whose params are read at export time (see src/ui/export.js)
 // and written via src/util/imageMeta.js. Covers standard fields (c) and arbitrary custom
@@ -14,14 +14,14 @@ const STD_MAP = {
     metaSoftware: 'software', metaDescription: 'description', metaDateTime: 'dateTime',
 };
 
-export const metadataEffect = {
-    name: 'metadata',
+export const overwriteEffect = {
+    name: 'overwrite',
     label: 'Overwrite',
     kind: 'glsl',
     singleton: true,
     paramKeys: [],
     params: {
-        metadataEnabled:  { default: false, label: 'Enable' },
+        overwriteEnabled:  { default: false, label: 'Enable' },
         metaPreserveOriginal: { default: false, label: 'Copy metadata from loaded image' },
         metaMake:         { default: '', type: 'text', label: 'Camera Make' },
         metaModel:        { default: '', type: 'text', label: 'Camera Model' },

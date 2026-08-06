@@ -4,7 +4,7 @@ import { getStack } from '../state/effectStack.js';
 import { encodePayload, PTYPE } from '../util/steg.js';
 import { embedRobust } from '../util/robustWatermark.js';
 import { writeMetadata, writeMetadataPreserving } from '../util/imageMeta.js';
-import { collectMetadataFields } from '../effects/metadata.js';
+import { collectMetadataFields } from '../effects/overwrite.js';
 import { launderImageData } from '../util/launder.js';
 
 // Find an enabled Protect effect instance in the stack (or null).
@@ -44,9 +44,9 @@ function applyMetadata(blob, meta) {
 // Build the final export blob, applying hidden LSB embedding and/or metadata.
 // Returns { blob, forcedPng }.
 async function buildExportBlob(format) {
-    const launder = activeInstance('cloak', 'cloakEnabled');
-    const hidden  = activeInstance('embedHidden', 'embedHiddenEnabled');
-    const meta    = activeInstance('metadata', 'metadataEnabled');
+    const launder = activeInstance('redact', 'redactEnabled');
+    const hidden  = activeInstance('cloak', 'cloakEnabled');
+    const meta    = activeInstance('overwrite', 'overwriteEnabled');
 
     // Launder supersedes embedding — laundering an image you also asked to embed into is
     // contradictory, so the scrub wins. Metadata is discarded because we rebuild the file from
@@ -55,13 +55,13 @@ async function buildExportBlob(format) {
         const lp = launder.params;
         const { c2d, ctx, imgData } = grabCanvasPixels();
         launderImageData(imgData, {
-            scrubHidden: lp.cloakScrubHidden !== false,
-            strength: lp.cloakStrength || 'medium',
+            scrubHidden: lp.redactScrubHidden !== false,
+            strength: lp.redactStrength || 'medium',
         });
         ctx.putImageData(imgData, 0, 0);
 
         let blob;
-        if (lp.cloakHarden) {
+        if (lp.redactHarden) {
             // Lossy re-encode also destroys fragile/unknown stego and the LSB plane entirely.
             blob = await new Promise(res => c2d.toBlob(res, 'image/jpeg', 0.9));
         } else {
@@ -71,19 +71,19 @@ async function buildExportBlob(format) {
 
         // If the user chose to keep metadata fields, allow an enabled Metadata effect to write
         // them onto the freshly-cleaned image; otherwise the output carries none.
-        if (lp.cloakStripMetadata === false && meta) {
+        if (lp.redactStripMetadata === false && meta) {
             blob = await applyMetadata(blob, meta);
         }
         return { blob, forcedPng: false };
     }
 
     const hp = hidden?.params;
-    const scheme = hp?.embedHiddenScheme || 'standard';
+    const scheme = hp?.cloakScheme || 'standard';
     const isRobust = scheme === 'robust';
     const hasHiddenPayload = hp && (isRobust
-        ? (hp.embedHiddenText || '').length > 0                          // robust: short text only
-        : (hp.embedHiddenType === 'image' && hp.embedHiddenImage) ||
-          (hp.embedHiddenType !== 'image' && (hp.embedHiddenText || '').length > 0));
+        ? (hp.cloakText || '').length > 0                          // robust: short text only
+        : (hp.cloakType === 'image' && hp.cloakImage) ||
+          (hp.cloakType !== 'image' && (hp.cloakText || '').length > 0));
 
     let blob;
     let forcedPng = false;
@@ -99,7 +99,7 @@ async function buildExportBlob(format) {
         if (isRobust) {
             // Frequency-domain watermark — built to survive lossy re-encoding, so keep the
             // user's chosen format (high-quality JPEG allowed; no forced PNG).
-            embedRobust(imgData, hp.embedHiddenText, { strength: hp.embedHiddenStrength || 'medium' });
+            embedRobust(imgData, hp.cloakText, { strength: hp.cloakStrength || 'medium' });
             ctx.putImageData(imgData, 0, 0);
             blob = format === 'jpg'
                 ? await new Promise(res => c2d.toBlob(res, 'image/jpeg', 0.95))
@@ -107,13 +107,13 @@ async function buildExportBlob(format) {
         } else {
             // LSB steg needs exact pixels and a lossless container → force PNG.
             forcedPng = true;
-            const isImage = hp.embedHiddenType === 'image';
+            const isImage = hp.cloakType === 'image';
             await encodePayload(imgData, {
                 scheme,
                 type: isImage ? PTYPE.IMAGE : PTYPE.TEXT,
-                payload: isImage ? hp.embedHiddenImage : hp.embedHiddenText,
-                passphrase: hp.embedHiddenPassphrase || '',
-                key: hp.embedHiddenKey || '',
+                payload: isImage ? hp.cloakImage : hp.cloakText,
+                passphrase: hp.cloakPassphrase || '',
+                key: hp.cloakKey || '',
             });
             ctx.putImageData(imgData, 0, 0);
             blob = await new Promise(res => c2d.toBlob(res, 'image/png'));

@@ -31,11 +31,10 @@ import { tunnelEffect }          from './tunnel.js';
 import { viewportEffect }        from './viewport.js';
 import { wrinkleEffect }         from './wrinkle.js';
 import { causticsEffect }        from './caustics.js';
+import { redactEffect }          from './redact.js';
+import { ghostmarkEffect }       from './ghostmark.js';
 import { cloakEffect }           from './cloak.js';
-import { scrambleEffect }        from './scramble.js';
-import { watermarkEffect }       from './watermark.js';
-import { embedHiddenEffect }     from './embedHidden.js';
-import { metadataEffect }        from './metadata.js';
+import { overwriteEffect }       from './overwrite.js';
 
 const viewportEntryEffect = {
     name: 'viewportEntry',
@@ -159,11 +158,10 @@ export const EFFECTS = [
     cutEffect,
     wrinkleEffect,
     causticsEffect,
+    redactEffect,
+    ghostmarkEffect,
     cloakEffect,
-    scrambleEffect,
-    watermarkEffect,
-    embedHiddenEffect,
-    metadataEffect,
+    overwriteEffect,
 ];
 
 for (const effect of EFFECTS) validateEffect(effect);
@@ -252,11 +250,10 @@ export const EFFECT_CATALOG = [
     { name: 'caustics',     label: 'Caustics',             category: 'Overlay', description: 'Underwater light caustics — the bright net of pool-bottom light lines' },
 
     // ── Ghost ──
-    { name: 'cloak',         label: 'Redact',               category: 'Ghost', description: 'Strip hidden data (LSB steg + robust watermark), metadata (EXIF/XMP/GPS), and trailing data before sharing — the counter-tool to Embed (Hidden) and Metadata' },
-    { name: 'scramble',      label: 'Cloak',                category: 'Ghost', description: 'Anti-scrape pixel perturbation: breaks exact-file hashing and degrades scrapers/OCR (near-invisible); partial pHash / reverse-search resistance. Not vs AI vision models' },
-    { name: 'watermark',     label: 'Ghostmark',            category: 'Ghost', description: 'Subtle visible watermark to claim authorship — ink or clear (refract / pixel-shift), drag to place, repeat as a tiled pattern; black/white/grey or noise sourced from the image' },
-    { name: 'embedHidden',   label: 'Embed',                category: 'Ghost', description: 'Hide text/image in pixel LSBs (PNG-only), or a short text via a Robust watermark that survives chat-app compression' },
-    { name: 'metadata',      label: 'Overwrite',            category: 'Ghost', description: 'Overwrite standard + custom file metadata (XMP/EXIF/GPS), preserve the original, and add an AI opt-out signal' },
+    { name: 'redact',        label: 'Redact',               category: 'Ghost', description: 'Strip hidden data (LSB steg + robust watermark), metadata (EXIF/XMP/GPS), and trailing data before sharing — the counter-tool to Cloak and Overwrite' },
+    { name: 'ghostmark',     label: 'Ghostmark',            category: 'Ghost', description: 'Subtle visible mark to claim authorship — ink or clear (refract / pixel-shift), drag to place, repeat as a tiled pattern; black/white/grey or noise sourced from the image' },
+    { name: 'cloak',         label: 'Cloak',                category: 'Ghost', description: 'Hide text/image in the pixels — LSB, randomized, edge-adaptive, or PVD (all PNG-only), or a short text via the Resilient DCT scheme that survives re-compression' },
+    { name: 'overwrite',     label: 'Overwrite',            category: 'Ghost', description: 'Overwrite standard + custom file metadata (XMP/EXIF/GPS), preserve the original, and add an AI opt-out signal' },
 
     // { name: 'moire',        label: 'Moire',                description: 'Two overlapping line grids that interfere to produce wave and band patterns' },
     //{ name: 'vignette',       label: 'Vignette',             description: 'Edge darkening or brightening' },

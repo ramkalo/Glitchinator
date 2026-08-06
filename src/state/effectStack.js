@@ -163,6 +163,12 @@ const _RENAMES = [
     { from: 'digital-smear', to: 'smearTwist',       prefixes: [['digitalSmear', 'smearTwist'], ['smear', 'smearTwist']] },
     { from: 'crtScanlines',  to: 'scanlines',        prefixes: [['crtScan', 'scan']] },
     { from: 'crtCurvature',  to: 'barrelDistortion', prefixes: [['crtCurvature', 'barrelDistortion']] },
+    // Ghost-category naming cleanup — id now matches the UI label. Note the swap: Redact vacates
+    // the `cloak` id (→ `redact`) so the former Embed effect can take it.
+    { from: 'cloak',         to: 'redact',           prefixes: [['cloak', 'redact']] },
+    { from: 'watermark',     to: 'ghostmark',        prefixes: [['watermark', 'ghostmark']] },
+    { from: 'embedHidden',   to: 'cloak',            prefixes: [['embedHidden', 'cloak']] },
+    { from: 'metadata',      to: 'overwrite',        prefixes: [['metadata', 'overwrite']] },
 ];
 
 function _migrateInstance(inst) {
@@ -215,6 +221,8 @@ function _migrateInstance(inst) {
             }
             params[nk] = v;
         }
+        // Cloak (formerly Embed): the private 'bxtrxt' scheme was renamed 'randomized'.
+        if (rename.to === 'cloak' && params.cloakScheme === 'bxtrxt') params.cloakScheme = 'randomized';
         return { ...inst, effectName: rename.to, params };
     }
 
@@ -222,6 +230,8 @@ function _migrateInstance(inst) {
 }
 
 export function restoreStack(snapshot) {
-    _stack = JSON.parse(JSON.stringify(snapshot)).map(_migrateInstance);
+    // Drop instances whose effect no longer exists (e.g. an effect deleted since a preset was
+    // saved) so the stack panel never tries to render a dead effect.
+    _stack = JSON.parse(JSON.stringify(snapshot)).map(_migrateInstance).filter(i => getEffect(i.effectName));
     _notify();
 }
