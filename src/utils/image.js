@@ -1,5 +1,6 @@
 import {
     setOriginalImage, originalImage,
+    setOriginalFileBytes,
     setSecondImage, secondImage,
     setSecondTexture,
     setBlendMapImage, blendMapImage,
@@ -12,6 +13,11 @@ import { processImage } from '../renderer/pipeline.js';
 import { showNotification } from './notifications.js';
 
 export function loadImage(file) {
+    // Keep the raw file bytes so the Reveal tool can read container metadata (EXIF/XMP/GPS).
+    file.arrayBuffer()
+        .then(buf => setOriginalFileBytes(new Uint8Array(buf)))
+        .catch(() => setOriginalFileBytes(null));
+
     const reader = new FileReader();
     reader.onload = function(e) {
         const img = new Image();
@@ -21,8 +27,10 @@ export function loadImage(file) {
             document.getElementById('imageInfo').textContent = `${img.width} \u00d7 ${img.height}px`;
             document.getElementById('dropZone').classList.add('hidden');
             document.getElementById('exportBtn').disabled = false;
+            document.getElementById('revealBtn').disabled = false;
             document.getElementById('savePresetBtn').disabled = false;
             document.getElementById('exportBtnMobile').disabled = false;
+            document.getElementById('revealBtnMobile').disabled = false;
             document.getElementById('savePresetBtnMobile').disabled = false;
 
             rescaleSecondImage();
@@ -64,12 +72,15 @@ export function loadBlankCanvas(width, height, color) {
     ctx.fillRect(0, 0, width, height);
 
     setOriginalImage(offscreen);
+    setOriginalFileBytes(null); // blank canvas has no source file / metadata
 
     document.getElementById('imageInfo').textContent = `${width} × ${height}px`;
     document.getElementById('dropZone').classList.add('hidden');
     document.getElementById('exportBtn').disabled = false;
+    document.getElementById('revealBtn').disabled = false;
     document.getElementById('savePresetBtn').disabled = false;
     document.getElementById('exportBtnMobile').disabled = false;
+    document.getElementById('revealBtnMobile').disabled = false;
     document.getElementById('savePresetBtnMobile').disabled = false;
 
     processImage();

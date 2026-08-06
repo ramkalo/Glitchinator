@@ -3,7 +3,9 @@ import { setInstanceParam, getStack, insertEffect, removeEffect } from '../state
 import { saveState } from '../state/undo.js';
 import { getCustomFonts } from '../state/customFonts.js';
 import { getPixelsBeforeInstance } from '../renderer/webgl.js';
-import { blendMapImage, glassMapImage, canvas } from '../renderer/glstate.js';
+import { blendMapImage, glassMapImage, canvas, originalFileBytes } from '../renderer/glstate.js';
+import { parseMetadataToFields } from '../util/imageMeta.js';
+import { showNotification } from '../utils/notifications.js';
 import { toggleBlendMapOverlay, hideBlendMapOverlay } from './canvasPicker.js';
 import { performCut, addPaste, clearCut } from './cutTool.js';
 import { buildPaletteSwatchControl, resolveColorKey, getActivePaletteFor } from './controls/paletteColor.js';
@@ -794,6 +796,63 @@ export function buildEffectBody(inst, onRebuild) {
         }
     }
 
+    if (inst.effectName === 'watermark') {
+        // Show Distortion only for the clear (refract/shift) styles; Static Grain only for the
+        // static ink colors; Density only when Repeat is on.
+        const grp = (k) => content.querySelector(`[data-inst-param="${k}"]`)?.closest('.control-group, .checkbox-label');
+        const distortEl = grp('watermarkDistort');
+        const grainEl   = grp('watermarkGrain');
+        const densityEl = grp('watermarkDensity');
+        const styleSel  = content.querySelector('[data-inst-param="watermarkStyle"]');
+        const colorSel  = content.querySelector('[data-inst-param="watermarkColor"]');
+        const repeatChk = content.querySelector('[data-inst-param="watermarkRepeat"]');
+        const upd = () => {
+            const style  = styleSel?.value ?? inst.params.watermarkStyle;
+            const color  = colorSel?.value ?? inst.params.watermarkColor;
+            const repeat = repeatChk ? repeatChk.checked : inst.params.watermarkRepeat;
+            if (distortEl) distortEl.style.display = (style === 'refract' || style === 'shift') ? '' : 'none';
+            if (grainEl)   grainEl.style.display   = (color === 'greyStatic' || color === 'imageStatic') ? '' : 'none';
+            if (densityEl) densityEl.style.display = repeat ? '' : 'none';
+        };
+        styleSel?.addEventListener('change', upd);
+        colorSel?.addEventListener('change', upd);
+        repeatChk?.addEventListener('change', upd);
+        upd();
+    }
+
+    if (inst.effectName === 'metadata') {
+        // "Copy metadata from loaded image" — when turned on, populate the editable fields from
+        // the loaded image's original metadata so the user can review/edit before export.
+        const FIELD_MAP = {
+            make: 'metaMake', model: 'metaModel', lens: 'metaLens', focalLength: 'metaFocalLength',
+            exposureTime: 'metaExposureTime', fNumber: 'metaFNumber', iso: 'metaISO',
+            copyright: 'metaCopyright', creator: 'metaCreator', publisher: 'metaPublisher',
+            software: 'metaSoftware', description: 'metaDescription', dateTime: 'metaDateTime',
+        };
+        const chk = content.querySelector('input[data-inst-param="metaPreserveOriginal"]');
+        chk?.addEventListener('change', () => {
+            if (!chk.checked) return;
+            if (!originalFileBytes) {
+                showNotification('No source metadata — load an image file first');
+                setInstanceParam(inst.id, 'metaPreserveOriginal', false);
+                chk.checked = false;
+                return;
+            }
+            const { standard, gps, custom } = parseMetadataToFields(originalFileBytes);
+            for (const [field, param] of Object.entries(FIELD_MAP)) {
+                if (standard[field] != null) setInstanceParam(inst.id, param, standard[field]);
+            }
+            if (gps) {
+                setInstanceParam(inst.id, 'metaGpsLat', String(gps.lat));
+                setInstanceParam(inst.id, 'metaGpsLon', String(gps.lon));
+                if (gps.alt != null) setInstanceParam(inst.id, 'metaGpsAlt', String(gps.alt));
+            }
+            if (custom?.length) setInstanceParam(inst.id, 'metaCustom', JSON.stringify(custom));
+            showNotification('Metadata copied from loaded image');
+            if (onRebuild) onRebuild();
+        });
+    }
+
     // Mesh and Tunnel color selectors are now palette-aware swatch strips
     // (type: 'paletteSelect'); the strip control handles live palette updates
     // and the ✕ ("None") swatch for tunnel's optional stops, so no per-effect
@@ -909,6 +968,15 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
     if (schema.hidden) return null;
     const label = labelOverride ?? schema.label ?? key;
     const currentVal = inst.params[key];
+
+    // Display-only explanatory text (no input). Used to document what an effect actually does.
+    if (schema.type === 'info') {
+        const note = document.createElement('p');
+        note.className = 'control-info';
+        note.style.cssText = 'margin:0;font-size:0.72rem;line-height:1.4;color:var(--text-dim);';
+        note.textContent = label;
+        return note;
+    }
 
     // "Pull From <region>" — sample the palette out of the image reaching this
     // instance. Target mode adds a draggable region box over the canvas.
@@ -1518,7 +1586,7 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
     if (key === 'cropCustomH') return null; // rendered by the cropCustomW row above
 
     // Textarea for multi-line text entry
-    if (key === 'matrixRainText' || key === 'text') {
+    if (key === 'matrixRainText' || key === 'text' || schema.type === 'text') {
         const group = document.createElement('div');
         group.className = 'control-group';
         const labelEl = document.createElement('div');
@@ -1550,6 +1618,112 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
             });
             group.appendChild(tsBtn);
         }
+        return group;
+    }
+
+    // Masked password / key input
+    if (schema.type === 'password') {
+        const group = document.createElement('div');
+        group.className = 'control-group';
+        const labelEl = document.createElement('div');
+        labelEl.className = 'control-section-header';
+        labelEl.style.cssText = 'font-size:0.75rem;margin-bottom:2px;';
+        labelEl.textContent = label;
+        const input = document.createElement('input');
+        input.type = 'password';
+        input.value = currentVal ?? '';
+        input.autocomplete = 'off';
+        input.dataset.instParam = key;
+        input.style.cssText = 'width:100%;box-sizing:border-box;font-size:0.8rem;';
+        input.addEventListener('input', () => setInstanceParam(inst.id, key, input.value));
+        group.appendChild(labelEl);
+        group.appendChild(input);
+        return group;
+    }
+
+    // Image loader → stores a data: URL string in the param (persists in presets)
+    if (schema.type === 'imageData') {
+        const group = document.createElement('div');
+        group.className = 'control-group';
+        const row = document.createElement('div');
+        row.className = 'control-row';
+        row.style.gap = '6px';
+
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        fileInput.style.display = 'none';
+
+        const loadBtn = document.createElement('button');
+        loadBtn.className = 'btn';
+        loadBtn.textContent = label;
+
+        const nameSpan = document.createElement('span');
+        nameSpan.style.cssText = 'font-size:0.7rem;font-family:monospace;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;';
+        nameSpan.textContent = currentVal ? 'loaded' : 'no image';
+
+        fileInput.addEventListener('change', () => {
+            const file = fileInput.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                saveState();
+                setInstanceParam(inst.id, key, reader.result);
+                nameSpan.textContent = file.name;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        loadBtn.addEventListener('click', () => fileInput.click());
+        row.appendChild(fileInput);
+        row.appendChild(loadBtn);
+        row.appendChild(nameSpan);
+        group.appendChild(row);
+        return group;
+    }
+
+    // Repeatable key/value editor → stores a JSON array string [{key,value},…]
+    if (schema.type === 'keyvalue') {
+        const group = document.createElement('div');
+        group.className = 'control-group';
+        const labelEl = document.createElement('div');
+        labelEl.className = 'control-section-header';
+        labelEl.style.cssText = 'font-size:0.75rem;margin-bottom:2px;';
+        labelEl.textContent = label;
+        group.appendChild(labelEl);
+
+        let entries;
+        try { entries = JSON.parse(currentVal || '[]'); } catch { entries = []; }
+        if (!Array.isArray(entries)) entries = [];
+        const commit = () => setInstanceParam(inst.id, key, JSON.stringify(entries));
+
+        entries.forEach((entry, i) => {
+            const row = document.createElement('div');
+            row.className = 'control-row';
+            row.style.gap = '4px';
+            const kIn = document.createElement('input');
+            kIn.type = 'text'; kIn.placeholder = 'key'; kIn.value = entry.key ?? '';
+            kIn.style.cssText = 'flex:1;min-width:0;font-size:0.75rem;';
+            const vIn = document.createElement('input');
+            vIn.type = 'text'; vIn.placeholder = 'value'; vIn.value = entry.value ?? '';
+            vIn.style.cssText = 'flex:2;min-width:0;font-size:0.75rem;';
+            kIn.addEventListener('input', () => { entries[i].key = kIn.value; commit(); });
+            vIn.addEventListener('input', () => { entries[i].value = vIn.value; commit(); });
+            const del = document.createElement('button');
+            del.className = 'btn btn-sm';
+            del.textContent = '✕';
+            del.style.cssText = 'padding:2px 6px;font-size:0.7rem;flex-shrink:0;';
+            del.addEventListener('click', () => { saveState(); entries.splice(i, 1); commit(); if (onRebuild) onRebuild(); });
+            row.append(kIn, vIn, del);
+            group.appendChild(row);
+        });
+
+        const addBtn = document.createElement('button');
+        addBtn.className = 'btn btn-sm';
+        addBtn.textContent = '+ Add field';
+        addBtn.style.cssText = 'padding:2px 8px;font-size:0.7rem;margin-top:4px;width:fit-content;';
+        addBtn.addEventListener('click', () => { saveState(); entries.push({ key: '', value: '' }); commit(); if (onRebuild) onRebuild(); });
+        group.appendChild(addBtn);
         return group;
     }
 

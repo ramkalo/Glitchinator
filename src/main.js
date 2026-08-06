@@ -14,6 +14,7 @@ import { initStackPanel, renderStackList } from './ui/stackPanel.js';
 import { initLogo } from './ui/logo.js';
 import { initPreferences } from './ui/preferences.js';
 import { restoreCustomFonts, loadFontFromFile } from './state/customFonts.js';
+import { initRevealTool, openReveal } from './ui/reveal.js';
 
 // ---------------------------------------------------------------------------
 // Stack UI rebuild — called whenever stack changes (add/remove/reorder/undo)
@@ -111,6 +112,8 @@ function openExportModal() {
 }
 
 document.getElementById('exportBtn').addEventListener('click', openExportModal);
+document.getElementById('revealBtn').addEventListener('click', openReveal);
+document.getElementById('revealBtnMobile').addEventListener('click', openReveal);
 
 document.getElementById('confirmExportBtn').addEventListener('click', function() {
     const format = document.querySelector('input[name="exportFormat"]:checked').value;
@@ -301,6 +304,7 @@ initBottomSheet();
 initTouchGestures();
 initLogo();
 initPreferences();
+initRevealTool();
 window.addEventListener('beforeunload', cleanupWebGL);
 
 // Mobile warning

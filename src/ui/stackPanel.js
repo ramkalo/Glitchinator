@@ -1,12 +1,12 @@
 import { EFFECT_CATALOG, EFFECT_CATEGORIES, getEffect } from '../effects/registry.js';
-import { getStack, addEffect, removeEffect, moveEffect, duplicateEffect, setInstanceParam } from '../state/effectStack.js';
+import { getStack, addEffect, removeEffect, moveEffect, duplicateEffect, setInstanceParam, canAddEffect } from '../state/effectStack.js';
 import { saveState } from '../state/undo.js';
 import { getPref } from './preferences.js';
 import { buildEffectBody, labelPreviewText } from './stackControls.js';
 import { blitOriginalToScreen } from '../renderer/webgl.js';
 import { processImageImmediate } from '../renderer/pipeline.js';
 import { originalImage } from '../renderer/glstate.js';
-import { showFadeOverlay, hideFadeOverlay, showCropOverlay, hideCropOverlay, showViewportOverlay, hideViewportOverlay, showMatrixRainOverlay, hideMatrixRainOverlay, showLineDragOverlay, hideLineDragOverlay, showChromaOverlay, hideChromaOverlay, showVignetteOverlay, hideVignetteOverlay, showCorruptedOverlay, hideCorruptedOverlay, showCRTCurvatureOverlay, hideCRTCurvatureOverlay, showTextOverlay, hideTextOverlay, showDoubleExposureOverlay, hideDoubleExposureOverlay, showShapeStickerOverlay, hideShapeStickerOverlay, showKaleidoscopeOverlay, hideKaleidoscopeOverlay, showDigitalSmearOverlay, hideDigitalSmearOverlay, showDrawToolOverlay, hideDrawToolOverlay, showMeshOverlay, hideMeshOverlay, showTunnelOverlay, hideTunnelOverlay, showFilmSoupOverlay, hideFilmSoupOverlay, showColorGelOverlay, hideColorGelOverlay, showHalftoneOverlay, hideHalftoneOverlay, showWrinkleOverlay, hideWrinkleOverlay, showCausticsOverlay, hideCausticsOverlay, showResinOverlay, hideResinOverlay, showGlassBlobOverlay, hideGlassBlobOverlay, showCutOverlay, hideCutOverlay } from './canvasPicker.js';
+import { showFadeOverlay, hideFadeOverlay, showCropOverlay, hideCropOverlay, showViewportOverlay, hideViewportOverlay, showMatrixRainOverlay, hideMatrixRainOverlay, showLineDragOverlay, hideLineDragOverlay, showChromaOverlay, hideChromaOverlay, showVignetteOverlay, hideVignetteOverlay, showCorruptedOverlay, hideCorruptedOverlay, showWatermarkOverlay, hideWatermarkOverlay, showCRTCurvatureOverlay, hideCRTCurvatureOverlay, showTextOverlay, hideTextOverlay, showDoubleExposureOverlay, hideDoubleExposureOverlay, showShapeStickerOverlay, hideShapeStickerOverlay, showKaleidoscopeOverlay, hideKaleidoscopeOverlay, showDigitalSmearOverlay, hideDigitalSmearOverlay, showDrawToolOverlay, hideDrawToolOverlay, showMeshOverlay, hideMeshOverlay, showTunnelOverlay, hideTunnelOverlay, showFilmSoupOverlay, hideFilmSoupOverlay, showColorGelOverlay, hideColorGelOverlay, showHalftoneOverlay, hideHalftoneOverlay, showWrinkleOverlay, hideWrinkleOverlay, showCausticsOverlay, hideCausticsOverlay, showResinOverlay, hideResinOverlay, showGlassBlobOverlay, hideGlassBlobOverlay, showCutOverlay, hideCutOverlay } from './canvasPicker.js';
 
 let _expandedId = null;
 
@@ -114,14 +114,24 @@ function renderCategoryList(category) {
 function makeCatalogItem(entry) {
     const item = document.createElement('div');
     item.className = 'catalog-item';
+    const singletonPresent = getEffect(entry.name)?.singleton && !canAddEffect(entry.name);
     item.innerHTML = `
         <div class="catalog-item-info">
             <span class="catalog-item-label">${entry.label}</span>
             <span class="catalog-item-desc">${entry.description}</span>
         </div>
-        <button class="catalog-item-add" title="Add ${entry.label}">+</button>
+        <button class="catalog-item-add" title="${singletonPresent ? 'Already in stack (only one allowed)' : 'Add ' + entry.label}"${singletonPresent ? ' disabled style="opacity:0.4;cursor:default;"' : ''}>+</button>
     `;
+    if (singletonPresent) item.style.opacity = '0.55';
     item.querySelector('.catalog-item-add').addEventListener('click', () => {
+        // Singleton already present — jump to its existing instance instead of adding.
+        if (!canAddEffect(entry.name)) {
+            const existing = getStack().find(i => i.effectName === entry.name);
+            if (existing) _expandedId = existing.id;
+            if (getPref('autoSwitchTab')) showTab('current');
+            renderStackList();
+            return;
+        }
         const PALETTE_DEPENDENT = new Set(['colorRemap', 'matrixRain', 'shapeSticker', 'text', 'corrupted', 'drawTool', 'mesh', 'tunnel', 'colorGel', 'halftone', 'wrinkle', 'caustics']);
         saveState();
         if (PALETTE_DEPENDENT.has(entry.name) && !getStack().some(i => i.effectName === 'colorPalette')) {
@@ -268,7 +278,7 @@ export function renderStackList() {
             actions.innerHTML = `
                 <button class="stack-move-btn" data-dir="up" title="Move up">&#8593;</button>
                 <button class="stack-move-btn" data-dir="down" title="Move down">&#8595;</button>
-                <button class="stack-dup-btn" title="Duplicate">&#10697;</button>
+                ${effect?.singleton ? '' : '<button class="stack-dup-btn" title="Duplicate">&#10697;</button>'}
                 <button class="stack-delete-btn" title="Remove">&#10005;</button>
             `;
             header.appendChild(actions);
@@ -300,8 +310,8 @@ export function renderStackList() {
                 });
             });
 
-            // Duplicate button
-            actions.querySelector('.stack-dup-btn').addEventListener('click', (e) => {
+            // Duplicate button (absent for singletons)
+            actions.querySelector('.stack-dup-btn')?.addEventListener('click', (e) => {
                 e.stopPropagation();
                 saveState();
                 duplicateEffect(inst.id);
@@ -347,6 +357,7 @@ export function renderStackList() {
     if (newEffect !== 'vignette')     hideVignetteOverlay();
     if (newEffect !== 'barrelDistortion') hideCRTCurvatureOverlay();
     if (newEffect !== 'corrupted')    hideCorruptedOverlay();
+    if (newEffect !== 'watermark')    hideWatermarkOverlay();
     if (newEffect !== 'doubleExposure') hideDoubleExposureOverlay();
     if (newEffect !== 'shapeSticker')   hideShapeStickerOverlay();
     if (newEffect !== 'kaleidoscope')   hideKaleidoscopeOverlay();
@@ -382,6 +393,7 @@ export function renderStackList() {
     else if (newEffect === 'vignette')     showVignetteOverlay(expandedInst);
     else if (newEffect === 'barrelDistortion') showCRTCurvatureOverlay(expandedInst);
     else if (newEffect === 'corrupted')    showCorruptedOverlay(expandedInst);
+    else if (newEffect === 'watermark')    showWatermarkOverlay(expandedInst);
     else if (newEffect === 'shapeSticker')  showShapeStickerOverlay(expandedInst);
     else if (newEffect === 'kaleidoscope')  showKaleidoscopeOverlay(expandedInst);
     else if (newEffect === 'smearTwist') showDigitalSmearOverlay(expandedInst);

@@ -163,6 +163,19 @@ body {
     cursor: not-allowed;
 }
 
+/* Subtle / secondary button — smaller, dimmer text and border. */
+.btn-dim {
+    font-size: 0.72rem;
+    padding: 6px 10px;
+    color: var(--text-dim);
+    border-color: #3a3a3a;
+}
+
+.btn-dim:hover {
+    color: var(--text);
+    border-color: var(--accent);
+}
+
 .stack-dup-btn {
     background: transparent;
     border: none;

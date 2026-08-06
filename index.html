@@ -40,6 +40,7 @@
                 </div>
                 <div class="toolbar-group toolbar-group--info">
                     <div class="image-info" id="imageInfo">No image loaded</div>
+                    <button class="btn btn-dim" id="revealBtn" disabled>Metadata</button>
                 </div>
                 <div class="toolbar-group">
                     <button class="btn" id="exportBtn" disabled>Export Image</button>
@@ -129,6 +130,7 @@
                 <input type="file" id="glassMapFileInput" accept="image/*" style="display:none;">
 
                 <div class="mobile-toolbar mobile-toolbar-bottom">
+                    <button class="btn btn-dim" id="revealBtnMobile" disabled>Metadata</button>
                     <button class="btn" id="exportBtnMobile" disabled>Export</button>
                     <button class="btn" id="undoBtnMobile" disabled>Undo</button>
                     <button class="btn" id="redoBtnMobile" disabled>Redo</button>
@@ -220,6 +222,27 @@
             <p class="export-hint hidden" id="exportHint">iOS is terrible, try to long press the image above to save to Photos but it will probably work better if you choose the "share" option. Screenshots can also be a viable option. You should just sell your iPhone tbh.</p>
             <div class="modal-actions">
                 <button class="btn btn-primary" id="closeExportPreviewBtn">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay hidden" id="revealModal">
+        <div class="modal">
+            <h2>Metadata</h2>
+            <p style="color:var(--text-dim);font-size:0.8rem;margin:0 0 8px;">Scans the image currently loaded in the app for metadata and hidden payloads.</p>
+            <div id="revealMetaResult" style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;max-height:40vh;overflow:auto;font-size:0.8rem;"></div>
+            <div id="revealPayloadResult" style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;font-size:0.8rem;"></div>
+            <div class="modal-field" style="margin-top:12px;">
+                <label for="revealPass">Passphrase (standard scheme)</label>
+                <input type="password" id="revealPass" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="modal-field">
+                <label for="revealKey">Key (BXTRXT private scheme)</label>
+                <input type="password" id="revealKey" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" id="revealRunBtn">Reveal</button>
+                <button class="btn" id="revealCloseBtn">Close</button>
             </div>
         </div>
     </div>

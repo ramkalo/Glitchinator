@@ -20,10 +20,21 @@ export function getStack() {
     return _stack;
 }
 
+/**
+ * Whether another instance of `effectName` may be added. Singleton effects
+ * (e.g. Metadata, Embed Hidden) are capped at one instance in the stack.
+ */
+export function canAddEffect(effectName) {
+    const effect = getEffect(effectName);
+    if (effect?.singleton && _stack.some(i => i.effectName === effectName)) return false;
+    return true;
+}
+
 export function addEffect(effectName) {
     const defaults = getEffectDefaults(effectName);
     if (!defaults) return null;
-    
+    if (!canAddEffect(effectName)) return _stack.find(i => i.effectName === effectName) ?? null;
+
     const effect = EFFECTS.find(e => e.name === effectName);
     const enabledKey = Object.keys(effect?.params || {}).find(k => 
         k.endsWith('Enabled') && typeof defaults[k] === 'boolean'
@@ -90,6 +101,7 @@ export function removeEffect(id) {
 export function insertEffect(effectName, beforeId) {
     const defaults = getEffectDefaults(effectName);
     if (!defaults) return null;
+    if (!canAddEffect(effectName)) return _stack.find(i => i.effectName === effectName) ?? null;
     const instance = { id: _uid(), effectName, params: { ...defaults } };
     const idx = beforeId ? _stack.findIndex(i => i.id === beforeId) : -1;
     _stack.splice(idx === -1 ? _stack.length : idx, 0, instance);
@@ -100,6 +112,7 @@ export function insertEffect(effectName, beforeId) {
 export function duplicateEffect(id) {
     const inst = _stack.find(i => i.id === id);
     if (!inst) return null;
+    if (!canAddEffect(inst.effectName)) return null; // singletons can't be duplicated
     const copy = { id: _uid(), effectName: inst.effectName, params: { ...inst.params } };
     // Reset internal-mode link for the duplicate — it needs its own entry if the user wants it
     if (copy.effectName === 'doubleExposure' && copy.params.doubleExposureMode === 'internal') {

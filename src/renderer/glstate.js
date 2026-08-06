@@ -10,6 +10,7 @@ export let overlayCanvas = document.getElementById('overlayCanvas');
 export let overlayCtx = null;
 
 export let originalImage = null;
+export let originalFileBytes = null; // raw bytes of the uploaded file (for metadata readback)
 export let secondImage   = null;
 export let blendMapImage = null;
 export let blendMapTexture = null;
@@ -31,6 +32,7 @@ function init() {
 init();
 
 export function setOriginalImage(v)    { originalImage = v; }
+export function setOriginalFileBytes(v) { originalFileBytes = v; }
 export function setSecondImage(v)      { secondImage = v; }
 export function setSecondTexture(v)    { if (secondTexture && gl) gl.deleteTexture(secondTexture); secondTexture = v; }
 export function setBlendMapImage(v)    { blendMapImage = v; }
