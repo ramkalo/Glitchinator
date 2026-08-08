@@ -2,7 +2,7 @@
 // modes (glass / metal / oil slick / soap bubble). Geometry is one irregular elliptical
 // signed-distance field, so the surface is smooth and lighting reads cleanly.
 
-import { glassMapTexture } from '../renderer/glstate.js';
+import { glassMapTexture, glassMapImage } from '../renderer/glstate.js';
 import { buildFadeControl, buildBlendControl } from './controls/index.js';
 
 const fade  = buildFadeControl('glassBlob');
@@ -60,6 +60,11 @@ function glassBlobBindUniforms(gl, prog, p) {
         gl.activeTexture(gl.TEXTURE1);
         gl.bindTexture(gl.TEXTURE_2D, glassMapTexture ?? skyFallbackTex(gl));
         gl.uniform1i(locs['uSkyTex'], 1);
+    }
+    // Reflection image's own pixel dimensions, so its aspect can be preserved when ball-mapped.
+    if (locs['uSkyTexSize'] != null) {
+        if (glassMapImage) gl.uniform2f(locs['uSkyTexSize'], glassMapImage.width, glassMapImage.height);
+        else               gl.uniform2f(locs['uSkyTexSize'], 0, 0);
     }
 
     const { amp, ph } = blobHarmonics(p.glassBlobSeed);
@@ -150,6 +155,7 @@ export const glassBlobEffect = {
 uniform int   uMode;
 uniform int   uHasSky;
 uniform sampler2D uSkyTex;
+uniform vec2  uSkyTexSize;
 uniform float glassBlobX, glassBlobY, glassBlobSizeX, glassBlobSizeY, glassBlobAngle, glassBlobIrregular;
 uniform float glassBlobHeight, glassBlobRoundness, glassBlobRefract, glassBlobDispersion, glassBlobMagnify;
 uniform float glassBlobReflect, glassBlobIridescence, glassBlobSwirlScale, glassBlobSwirlFreq, glassBlobSwirlSeed;
@@ -266,7 +272,12 @@ void main() {
 
         // Reflect the loaded reflection image (ball-mapped), or the scene beneath if none.
         vec3 envc;
-        if (uHasSky == 1) envc = texture(uSkyTex, clamp(Rv.xy * 0.5 + 0.5, 0.0, 1.0)).rgb;
+        vec2 skyUV = Rv.xy;
+        if (uSkyTexSize.x > 0.0 && uSkyTexSize.y > 0.0) {
+            float imgA = uSkyTexSize.x / uSkyTexSize.y;   // preserve aspect within reflection square
+            skyUV *= imgA > 1.0 ? vec2(1.0, imgA) : vec2(1.0 / imgA, 1.0);
+        }
+        if (uHasSky == 1) envc = texture(uSkyTex, clamp(skyUV * 0.5 + 0.5, 0.0, 1.0)).rgb;
         else              envc = texture(uTex, clamp(vUV + Rv.xy * 0.8, 0.0, 1.0)).rgb;
         float kpunch = mix(1.0, 2.2, glassBlobReflect / 100.0);   // Polish → reflection contrast
         envc = clamp((envc - 0.4) * kpunch + 0.4, 0.0, 1.0);

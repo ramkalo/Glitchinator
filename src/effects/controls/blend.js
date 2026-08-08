@@ -1,4 +1,4 @@
-import { blendMapTexture, blendMapPosX, blendMapPosY, blendMapRot, blendMapZoom } from '../../renderer/glstate.js';
+import { blendMapTexture, blendMapImage, blendMapPosX, blendMapPosY, blendMapRot, blendMapZoom } from '../../renderer/glstate.js';
 
 let _fallbackTex = null;
 function _getFallbackTex(gl) {
@@ -51,6 +51,7 @@ uniform float blendMapPosX;
 uniform float blendMapPosY;
 uniform float blendMapRot;
 uniform float blendMapZoom;
+uniform vec2  uBlendMapTexSize;
 uniform int   __P__BlendMapInvert;
 uniform float __P__BlendMapAmount;
 uniform float __P__BlendMapScale;
@@ -68,13 +69,24 @@ float __P__BlendCh(float a, float b) {
 vec3 __P__Blend(vec3 base, vec3 src) {
     if (__P__BlendEnabled != 1) return src;
     if (__P__BlendMode == 6) {
-        vec2 bmUV = vUV - 0.5;
-        bmUV -= vec2(blendMapPosX / 100.0, blendMapPosY / 100.0);
+        float baseA = uResolution.x / uResolution.y;
+        // Work in an isotropic, frame-centered space (1 unit = frame height) so rotation
+        // is a true rotation instead of a shear skewed by the base aspect ratio.
+        vec2 p = vUV - 0.5;
+        p.x *= baseA;
+        p -= vec2(blendMapPosX / 100.0 * baseA, blendMapPosY / 100.0);
         float bmRad = blendMapRot * 3.14159265 / 180.0;
         float bmCos = cos(bmRad), bmSin = sin(bmRad);
-        bmUV = mat2(bmCos, bmSin, -bmSin, bmCos) * bmUV;
-        bmUV /= max(blendMapZoom / 100.0, 0.01);
-        bmUV += 0.5;
+        p = mat2(bmCos, bmSin, -bmSin, bmCos) * p;
+        p /= max(blendMapZoom / 100.0, 0.01);
+        // Map isotropic space -> texture space, preserving the map image's aspect ("contain").
+        // disp = the frame extent in isotropic units; without a map it stays neutral.
+        vec2 disp = vec2(baseA, 1.0);
+        if (uBlendMapTexSize.x > 0.0 && uBlendMapTexSize.y > 0.0) {
+            float imgA = uBlendMapTexSize.x / uBlendMapTexSize.y;
+            disp = imgA > baseA ? vec2(baseA, baseA / imgA) : vec2(imgA, 1.0);
+        }
+        vec2 bmUV = p / disp + 0.5;
         float L = dot(texture(uBlendMapTex, bmUV).rgb, vec3(0.299, 0.587, 0.114));
         if (__P__BlendMapInvert == 1) L = 1.0 - L;
         L = L + __P__BlendMapRadius / 100.0;
@@ -195,6 +207,14 @@ export function buildBlendControl(prefix, defaults = {}) {
             sf('blendMapPosY', blendMapPosY);
             sf('blendMapRot',  blendMapRot);
             sf('blendMapZoom', blendMapZoom);
+
+            // Map image's own pixel dimensions, so the shader can preserve its aspect ratio.
+            // (0, 0) when no map is loaded keeps the shader's aspect correction neutral.
+            const sizeLoc = locs['uBlendMapTexSize'];
+            if (sizeLoc != null) {
+                if (blendMapImage) gl.uniform2f(sizeLoc, blendMapImage.width, blendMapImage.height);
+                else               gl.uniform2f(sizeLoc, 0, 0);
+            }
         },
     };
 }

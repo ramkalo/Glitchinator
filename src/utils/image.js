@@ -127,8 +127,9 @@ export function rescaleGlassMapImage() {
 
 export function rescaleSecondImage() {
     if (!secondImage || !originalImage) return;
-    // Upload second image as a texture; the shader samples with the same UV coordinates,
-    // so it is automatically scaled to match the primary image dimensions.
+    // Upload second image as a texture at its native size. The shader reads the image's own
+    // dimensions (uSecondTexSize) and aspect-corrects the UVs ("contain" fit), so the image
+    // keeps its proportions instead of being stretched to the primary image's aspect ratio.
     if (setSecondTexture) {
         const prev = null; // old texture cleanup handled by setSecondTexture caller if needed
         const tex = uploadToTexture(secondImage);

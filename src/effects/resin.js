@@ -1,6 +1,6 @@
 import { buildFadeControl, buildBlendControl } from './controls/index.js';
 import { resolveColorKey, STANDARD_COLOR_OPTIONS } from './colorOptions.js';
-import { glassMapTexture } from '../renderer/glstate.js';
+import { glassMapTexture, glassMapImage } from '../renderer/glstate.js';
 
 const fade  = buildFadeControl('resin');
 const blend = buildBlendControl('resin');
@@ -120,6 +120,12 @@ function resinBindUniforms(gl, prog, p, dstW, dstH) {
         gl.bindTexture(gl.TEXTURE_2D, glassMapTexture ?? getFallbackTex(gl));
         gl.uniform1i(locs['uGlassTex'], 3);
     }
+    // Glass image's own pixel dimensions, so the shader can preserve its aspect ratio.
+    // (0, 0) when no image is loaded keeps the aspect correction neutral.
+    if (locs['uGlassTexSize'] != null) {
+        if (glassMapImage) gl.uniform2f(locs['uGlassTexSize'], glassMapImage.width, glassMapImage.height);
+        else               gl.uniform2f(locs['uGlassTexSize'], 0, 0);
+    }
 
     // Bubble data on TEXTURE4 (regenerated only when bubble params change).
     if (locs['uBubbleTex'] != null) {
@@ -222,6 +228,7 @@ uniform float resinTexMix;
 uniform float resinTexScale;
 uniform int   resinHasGlassImg;
 uniform float resinImgX, resinImgY, resinImgRot, resinImgZoom;
+uniform vec2  uGlassTexSize;
 uniform int   resinBubCount;
 uniform float resinBubHeight;
 uniform float resinBubCenterX, resinBubCenterY;
@@ -232,11 +239,19 @@ ${NOISE_GLSL}
 vec2 resinGlassUV(vec2 uv) {
     vec2 q = uv - 0.5;
     q -= vec2(resinImgX / 100.0 - 0.5, -(resinImgY / 100.0 - 0.5));
+    // Isotropic, frame-centered space so rotation is a true rotation, not an aspect-skewed shear.
+    q.x *= uAspect;
     float r = resinImgRot * 3.14159265 / 180.0;
     float c = cos(r), s = sin(r);
     q = mat2(c, s, -s, c) * q;
     q /= max(resinImgZoom / 100.0, 0.01);
-    return q + 0.5;
+    // Map isotropic space -> texture space, preserving the glass image's aspect ("contain").
+    vec2 disp = vec2(uAspect, 1.0);
+    if (uGlassTexSize.x > 0.0 && uGlassTexSize.y > 0.0) {
+        float imgA = uGlassTexSize.x / uGlassTexSize.y;
+        disp = imgA > uAspect ? vec2(uAspect, uAspect / imgA) : vec2(imgA, 1.0);
+    }
+    return q / disp + 0.5;
 }
 
 float resinBubbleDome(vec2 uv) {
@@ -334,6 +349,7 @@ uniform vec3  resinMetal;
 uniform float resinIridescence;
 uniform float resinFrost;
 uniform int   resinHasGlassImg;
+uniform vec2  uGlassTexSize;
 uniform int   resinHueEnabled;
 uniform float resinHueCenter, resinHueWidth, resinHueFeather;
 
@@ -379,7 +395,13 @@ void main() {
     } else if (resinMode == 2) {                // Liquid chrome
         vec3 R = reflect(-V, N);
         vec3 env;
-        if (resinHasGlassImg == 1) env = texture(uGlassTex, clamp(R.xy * 0.5 + 0.5, 0.0, 1.0)).rgb;
+        // Ball-mapped reflection; preserve the reflection image's aspect within the square ("contain").
+        vec2 refl = R.xy;
+        if (uGlassTexSize.x > 0.0 && uGlassTexSize.y > 0.0) {
+            float imgA = uGlassTexSize.x / uGlassTexSize.y;
+            refl *= imgA > 1.0 ? vec2(1.0, imgA) : vec2(1.0 / imgA, 1.0);
+        }
+        if (resinHasGlassImg == 1) env = texture(uGlassTex, clamp(refl * 0.5 + 0.5, 0.0, 1.0)).rgb;
         else                       env = mix(vec3(0.12, 0.14, 0.18), vec3(0.92, 0.96, 1.0), R.y * 0.5 + 0.5);
         shaded = mix(refr, env * resinMetal, clamp(fres + 0.35, 0.0, 1.0)) + resinSpecColor * spec;
     } else {                                    // Frosted glass
