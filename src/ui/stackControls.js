@@ -3,6 +3,9 @@ import { setInstanceParam, getStack, insertEffect, removeEffect } from '../state
 import { saveState } from '../state/undo.js';
 import { getCustomFonts } from '../state/customFonts.js';
 import { getPixelsBeforeInstance } from '../renderer/webgl.js';
+import { processImageImmediate } from '../renderer/pipeline.js';
+import { getCollageImages, setCollageImage, clearCollageImage, moveCollageImage } from '../effects/collage.js';
+import { sliceAndExport } from '../effects/slicer.js';
 import { blendMapImage, glassMapImage, canvas, originalFileBytes } from '../renderer/glstate.js';
 import { parseMetadataToFields } from '../util/imageMeta.js';
 import { showNotification } from '../utils/notifications.js';
@@ -959,6 +962,160 @@ export function buildEffectBody(inst, onRebuild) {
         row.appendChild(btn);
         panel.appendChild(row);
         content.appendChild(panel);
+    }
+
+    // Collage: a reorderable list of per-cell image loaders. Images live in the session
+    // side-map (collage.js), keyed by instance id + slot (= row*cols + col).
+    if (inst.effectName === 'collage') {
+        const section = document.createElement('div');
+        section.className = 'control-group';
+        const header = document.createElement('div');
+        header.className = 'control-section-header';
+        header.textContent = 'Cells';
+        section.appendChild(header);
+
+        const list = document.createElement('div');
+        list.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
+
+        // Resolve where a drag would drop, given the pointer Y.
+        const resolveIndex = (clientY) => {
+            const els = [...list.querySelectorAll('.collage-cell-row')];
+            for (let i = 0; i < els.length; i++) {
+                const { top, height } = els[i].getBoundingClientRect();
+                if (clientY < top + height / 2) return i;
+            }
+            return els.length;
+        };
+
+        // (Re)build the cell rows to match the current grid size. Rebuilds only this list
+        // (not the whole panel) so it can be triggered from the grid sliders without
+        // disturbing the slider being dragged.
+        const renderCellRows = () => {
+            list.innerHTML = '';
+            const cols = Math.max(1, Math.round(inst.params.collageCols || 1));
+            const rows = Math.max(1, Math.round(inst.params.collageRows || 1));
+            const count = cols * rows;
+            const imgs = getCollageImages(inst.id);
+
+            for (let slot = 0; slot < count; slot++) {
+                const entry = imgs[slot];
+                const row = document.createElement('div');
+                row.className = 'collage-cell-row control-row';
+                row.dataset.slot = slot;
+                row.style.cssText = 'display:flex;align-items:center;gap:8px;';
+
+                const handle = document.createElement('span');
+                handle.className = 'stack-drag-handle';
+                handle.innerHTML = '&#8801;';
+                handle.title = 'Drag to reorder';
+                handle.style.cssText = 'cursor:grab;user-select:none;touch-action:none;';
+
+                const labelEl = document.createElement('span');
+                labelEl.style.cssText = 'flex:1;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:' + (entry ? 'var(--text)' : 'var(--text-dim)');
+                labelEl.textContent = entry?.name ? `${slot + 1}. ${entry.name}` : `Cell ${slot + 1}`;
+
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.accept = 'image/*';
+                fileInput.style.display = 'none';
+
+                const loadBtn = document.createElement('button');
+                loadBtn.className = 'btn';
+                loadBtn.textContent = entry ? 'Replace' : 'Load';
+                loadBtn.style.cssText = 'padding:2px 8px;font-size:0.72rem;';
+
+                const clearBtn = document.createElement('button');
+                clearBtn.className = 'btn';
+                clearBtn.innerHTML = '&times;';
+                clearBtn.title = 'Clear cell';
+                clearBtn.style.cssText = 'padding:2px 8px;font-size:0.72rem;';
+                if (!entry) clearBtn.style.visibility = 'hidden';
+
+                fileInput.addEventListener('change', () => {
+                    const file = fileInput.files?.[0];
+                    if (!file) return;
+                    createImageBitmap(file).then((bitmap) => {
+                        setCollageImage(inst.id, slot, { bitmap, name: file.name });
+                        labelEl.textContent = `${slot + 1}. ${file.name}`;
+                        labelEl.style.color = 'var(--text)';
+                        loadBtn.textContent = 'Replace';
+                        clearBtn.style.visibility = '';
+                        processImageImmediate();
+                    }).catch(() => showNotification('Could not load that image'));
+                });
+                loadBtn.addEventListener('click', () => fileInput.click());
+                clearBtn.addEventListener('click', () => {
+                    clearCollageImage(inst.id, slot);
+                    processImageImmediate();
+                    renderCellRows();
+                });
+
+                // Pointer-drag reorder (mirrors the stack-panel drag handle).
+                handle.addEventListener('pointerdown', (e) => {
+                    e.preventDefault();
+                    const from = slot;
+                    row.classList.add('dragging');
+                    row.style.opacity = '0.5';
+                    const onUp = (ev) => {
+                        document.removeEventListener('pointerup', onUp);
+                        row.classList.remove('dragging');
+                        row.style.opacity = '';
+                        const resolved = resolveIndex(ev.clientY);
+                        let to = resolved > from ? resolved - 1 : resolved;
+                        to = Math.max(0, Math.min(count - 1, to));
+                        if (to !== from) {
+                            moveCollageImage(inst.id, from, to);
+                            processImageImmediate();
+                            renderCellRows();
+                        }
+                    };
+                    document.addEventListener('pointerup', onUp, { once: true });
+                });
+
+                row.append(handle, labelEl, loadBtn, clearBtn, fileInput);
+                list.appendChild(row);
+            }
+        };
+
+        renderCellRows();
+        section.appendChild(list);
+        content.appendChild(section);
+
+        // Live-update the list when the grid-size sliders move (input, not change).
+        for (const k of ['collageCols', 'collageRows']) {
+            const range = content.querySelector(`input[type="range"][data-inst-param="${k}"]`);
+            range?.addEventListener('input', renderCellRows);
+        }
+    }
+
+    // Slicer: single action button that splits the rendered image and downloads each cell.
+    if (inst.effectName === 'slicer') {
+        const group = document.createElement('div');
+        group.className = 'control-group';
+
+        const btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.textContent = 'Split & Export';
+        btn.style.width = '100%';
+        btn.addEventListener('click', async () => {
+            const prev = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Exporting…';
+            try { await sliceAndExport(inst.id); }
+            finally { btn.disabled = false; btn.textContent = prev; }
+        });
+        group.appendChild(btn);
+
+        const cols = Math.max(1, Math.round(inst.params.slicerCols || 1));
+        const rows = Math.max(1, Math.round(inst.params.slicerRows || 1));
+        const n = cols * rows;
+        const base = (inst.params.slicerBaseName || 'slice').trim() || 'slice';
+        const hint = document.createElement('div');
+        hint.style.cssText = 'font-size:0.72rem;color:var(--text-dim);margin-top:6px;';
+        hint.textContent = `${n} cells → ${base}_1 … ${base}_${n}.png`;
+        group.appendChild(hint);
+
+        content.appendChild(group);
     }
 
     return content;

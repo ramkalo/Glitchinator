@@ -321,14 +321,13 @@ function _runLinear(stack, startTex, inheritedPalette = null, internalTextures =
             activePalette = Array.from({ length: 8 }, (_, j) => instance.params[`palette${j}`]);
         }
 
-        // Merge palette and internal DE texture into render params without mutating instance.params
+        // Merge palette and internal DE texture into render params without mutating instance.params.
+        // Always carry the instance id so context effects can look up per-instance side data
+        // (e.g. the collage tool's session image map). _instanceId is ignored by uniform binding.
         const internalTex = internalTextures?.get(instance.id)?.tex ?? null;
-        let renderParams = instance.params;
-        if (activePalette || internalTex) {
-            renderParams = { ...instance.params };
-            if (activePalette) renderParams._activePalette = activePalette;
-            if (internalTex) renderParams._internalSecondTex = internalTex;
-        }
+        const renderParams = { ...instance.params, _instanceId: instance.id };
+        if (activePalette) renderParams._activePalette = activePalette;
+        if (internalTex) renderParams._internalSecondTex = internalTex;
 
         if (!effect || !effect.enabled(renderParams)) continue;
 
