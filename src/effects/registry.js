@@ -7,6 +7,7 @@ import { colorPaletteEffect }    from './colorPalette.js';
 import { colorRemapEffect }      from './colorRemap.js';
 import { corruptedEffect }       from './corrupted.js';
 import { cropEffect }            from './crop.js';
+import { resizeEffect }          from './resize.js';
 import { digitizeEffect }        from './digitize.js';
 import { doubleExposureEffect }  from './doubleExposure.js';
 import { drawToolEffect }        from './drawTool.js';
@@ -124,6 +125,7 @@ function validateEffect(effect) {
 export const EFFECTS = [
     transformEffect,
     cropEffect,
+    resizeEffect,
     colorPaletteEffect,
     doubleExposureEntryEffect,
     doubleExposureEffect,
@@ -219,6 +221,7 @@ export const EFFECT_CATALOG = [
     { name: 'glow',           label: 'Glow',                 category: 'Adjust',  description: 'Bloom halo around bright areas' },
     { name: 'grain',          label: 'Grain & Noise',        category: 'Adjust',  description: 'Analog film grain and digital noise types' },
     { name: 'hueShift',       label: 'Hue Shift',            category: 'Adjust',  description: 'Rotate all hues around the color wheel without quantizing' },
+    { name: 'resize',         label: 'Resize',               category: 'Adjust',  description: 'Resize the image — type a pixel size for one dimension; the other snaps to the source ratio' },
 
     // ── Morph ──
     { name: 'chroma',         label: 'Chromatic Aberration', category: 'Morph',   description: 'RGB channel separation glitch' },
