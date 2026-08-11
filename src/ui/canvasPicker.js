@@ -34,6 +34,7 @@ import { drawCaustics, hitTestCaustics, onDragCaustics, causticsRotAnchor } from
 import { drawResin, hitTestResin, onDragResin } from './overlays/resinOverlay.js';
 import { drawGlassBlob, hitTestGlassBlob, onDragGlassBlob } from './overlays/glassBlobOverlay.js';
 import { drawCut, hitTestCut, onDragCut, resetCutVertices } from './overlays/cutOverlay.js';
+import { drawQR, hitTestQR, onDragQR } from './overlays/qrOverlay.js';
 import { deleteActivePaste } from './cutTool.js';
 
 // ── onStackChange redraw dispatcher ──────────────────────────────────────────
@@ -131,6 +132,7 @@ onStackChange((key) => {
     if (state.mode === 'caustics')     drawCaustics(inst.params);
     if (state.mode === 'resin')        drawResin(inst.params);
     if (state.mode === 'glassBlob')    drawGlassBlob(inst.params);
+    if (state.mode === 'qr')           drawQR(inst.params);
     if (state.mode === 'cut') {
         const p = inst.params;
         const shape = p.cutShape;
@@ -191,6 +193,15 @@ export function showShapeStickerOverlay(inst) {
 
 export function hideShapeStickerOverlay() {
     if (state.mode === 'shapeSticker') _hideActive();
+}
+
+export function showQROverlay(inst) {
+    _activate('qr', inst, 'qrX', 'qrY');
+    drawQR(inst.params);
+}
+
+export function hideQROverlay() {
+    if (state.mode === 'qr') _hideActive();
 }
 
 export function showCropOverlay(inst) {
@@ -639,6 +650,11 @@ function getCursorForMode(mode, h) {
                 : (h === 'rot' || h === 'grab_rot') ? 'crosshair'
                 : (h && h.startsWith('v')) ? 'move'
                 : h ? 'nwse-resize' : 'default');
+        case 'qr':
+            return fadeCursor(h)
+                || (h === 'center' ? 'grab'
+                : h === 'rot' ? 'crosshair'
+                : h ? 'nwse-resize' : 'default');
         case 'smearTwist': {
             if (h === 'center' || (h && h.startsWith('node:'))) return 'grab';
             const dsInst = getStack().find(i => i.id === state.instId);
@@ -712,6 +728,7 @@ const HIT_FNS = {
     ghostmark:      hitTestGhostmark,
     text:           hitTestText,
     shapeSticker:   hitTestShapeSticker,
+    qr:             hitTestQR,
     matrixRain:     hitTestMatrixRain,
     smearTwist:hitTestDigitalSmear,
     filmSoup:       hitTestFilmSoup,
@@ -738,6 +755,7 @@ const DRAG_FNS = {
     barrelDistortion:   onDragCRTCurvature,
     text:           onDragText,
     shapeSticker:   onDragShapeSticker,
+    qr:             onDragQR,
     matrixRain:     onDragMatrixRain,
     ghostmark:      onDragGhostmark,
     smearTwist:onDragDigitalSmear,
@@ -767,6 +785,7 @@ const DRAW_FNS = {
     text:           drawTextOverlay,
     doubleExposure: drawDoubleExposure,
     shapeSticker:   drawShapeSticker,
+    qr:             drawQR,
     corrupted:      drawCorrupted,
     ghostmark:      drawGhostmark,
     barrelDistortion:   drawCRTCurvature,

@@ -16,6 +16,8 @@ import { buildHueGridControl } from './controls/hueGrid.js';
 import { buildStopSlider } from './controls/stopSlider.js';
 import { GEL_STOPS, gelMode } from '../effects/colorGel.js';
 import { rightAngleCorners } from './overlays/textBoxGeometry.js';
+import { buildCipherControls } from './cipherControls.js';
+import { getQRStatus } from '../effects/qrEngine.js';
 
 // First few characters of an effect's content, shown dimmed after its stack-list
 // label so several instances of the same effect can be told apart at a glance.
@@ -343,6 +345,32 @@ function _placeRandomNodes(inst) {
 }
 
 // Build all parameter controls for one effect instance into a container div.
+// A live warning banner for the QR effect — surfaces capacity/generation problems so a code never
+// fails or drops data silently. qrEngine dispatches a 'qr-status' event when async generation
+// finishes; the banner refreshes then (and self-detaches once its element leaves the DOM).
+function buildQrWarning(inst) {
+    const box = document.createElement('div');
+    box.className = 'control-group qr-warning';
+    box.style.cssText = 'display:none;border:1px solid var(--danger,#e66);border-radius:6px;padding:8px 10px;color:var(--danger,#e66);font-size:0.75rem;line-height:1.35;';
+
+    const update = () => {
+        const st = getQRStatus(inst.id);
+        if (st && (st.status === 'error' || st.status === 'truncated')) {
+            box.style.display = 'block';
+            box.textContent = '⚠ ' + (st.message || 'This code could not be generated.');
+        } else {
+            box.style.display = 'none';
+        }
+    };
+    const onStatus = (e) => {
+        if (!box.isConnected) { document.removeEventListener('qr-status', onStatus); return; }
+        if (!e.detail || e.detail.instId === inst.id) update();
+    };
+    document.addEventListener('qr-status', onStatus);
+    update();
+    return box;
+}
+
 export function buildEffectBody(inst, onRebuild) {
     const effect = getEffect(inst.effectName);
     if (!effect) return document.createElement('div');
@@ -454,6 +482,14 @@ export function buildEffectBody(inst, onRebuild) {
         };
         sel.addEventListener('change', updateFadeShapeUI);
         updateFadeShapeUI();
+    }
+
+    if (inst.effectName === 'cipher') {
+        content.appendChild(buildCipherControls(inst, onRebuild));
+    }
+
+    if (inst.effectName === 'qr') {
+        content.insertBefore(buildQrWarning(inst), content.firstChild);   // top of the card, above the text field
     }
 
     if (inst.effectName === 'cut') {
@@ -971,11 +1007,64 @@ export function buildEffectBody(inst, onRebuild) {
         section.className = 'control-group';
         const header = document.createElement('div');
         header.className = 'control-section-header';
-        header.textContent = 'Cells';
+        header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;';
+        const headerLabel = document.createElement('span');
+        headerLabel.textContent = 'Cells';
+        header.appendChild(headerLabel);
+
+        // Batch loader: multi-select picker that fills empty cells in slot order.
+        const batchInput = document.createElement('input');
+        batchInput.type = 'file';
+        batchInput.accept = 'image/*';
+        batchInput.multiple = true;
+        batchInput.style.display = 'none';
+        const batchBtn = document.createElement('button');
+        batchBtn.className = 'btn';
+        batchBtn.textContent = 'Add images';
+        batchBtn.title = 'Load multiple images into empty cells at once';
+        batchBtn.style.cssText = 'padding:2px 8px;font-size:0.72rem;';
+        batchBtn.addEventListener('click', () => batchInput.click());
+        header.append(batchBtn, batchInput);
         section.appendChild(header);
 
         const list = document.createElement('div');
         list.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
+
+        batchInput.addEventListener('change', async () => {
+            const files = [...(batchInput.files || [])].sort((a, b) => a.name.localeCompare(b.name));
+            batchInput.value = ''; // allow re-selecting the same files
+            if (!files.length) return;
+
+            const cols = Math.max(1, Math.round(inst.params.collageCols || 1));
+            const rows = Math.max(1, Math.round(inst.params.collageRows || 1));
+            const count = cols * rows;
+            const imgs = getCollageImages(inst.id);
+            const emptySlots = [];
+            for (let slot = 0; slot < count; slot++) if (!imgs[slot]) emptySlots.push(slot);
+
+            if (!emptySlots.length) { showNotification('All cells are full'); return; }
+
+            const pairCount = Math.min(emptySlots.length, files.length);
+            let failed = 0;
+            await Promise.all(Array.from({ length: pairCount }, async (_, i) => {
+                const slot = emptySlots[i];
+                const file = files[i];
+                try {
+                    const bitmap = await createImageBitmap(file);
+                    setCollageImage(inst.id, slot, { bitmap, name: file.name });
+                } catch { failed++; }
+            }));
+
+            renderCellRows();
+            processImageImmediate();
+
+            const placed = pairCount - failed;
+            const skipped = files.length - pairCount;
+            const parts = [`Placed ${placed} image${placed === 1 ? '' : 's'}`];
+            if (skipped > 0) parts.push(`${skipped} skipped (no empty cells)`);
+            if (failed > 0) parts.push(`${failed} could not be loaded`);
+            if (skipped > 0 || failed > 0) showNotification(parts.join(' · '));
+        });
 
         // Resolve where a drag would drop, given the pointer Y.
         const resolveIndex = (clientY) => {

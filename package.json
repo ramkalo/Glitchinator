@@ -18,6 +18,7 @@
     "vite-plugin-pwa": "^1.2.0"
   },
   "dependencies": {
+    "@bwip-js/browser": "^4.11.2",
     "@capacitor/core": "^8.3.1",
     "piexifjs": "^1.0.6"
   }

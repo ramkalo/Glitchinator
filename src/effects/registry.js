@@ -38,6 +38,8 @@ import { redactEffect }          from './redact.js';
 import { ghostmarkEffect }       from './ghostmark.js';
 import { cloakEffect }           from './cloak.js';
 import { overwriteEffect }       from './overwrite.js';
+import { cipherEffect }          from './cipher.js';
+import { qrEffect }              from './qr.js';
 
 const viewportEntryEffect = {
     name: 'viewportEntry',
@@ -168,6 +170,8 @@ export const EFFECTS = [
     ghostmarkEffect,
     cloakEffect,
     overwriteEffect,
+    cipherEffect,
+    qrEffect,
 ];
 
 for (const effect of EFFECTS) validateEffect(effect);
@@ -250,6 +254,7 @@ export const EFFECT_CATALOG = [
     { name: 'shapeSticker',   label: 'Shape Sticker',         category: 'Overlay', description: 'Apply a shape filled with solid color, static, or image grab' },
     { name: 'halftone',     label: 'Halftone',             category: 'Overlay', description: 'Dot, diamond, or ASCII halftone with linear, concentric, or luminance-driven size & spacing' },
     { name: 'text',            label: 'Text',                 category: 'Overlay', description: 'Text overlay with paragraph box, formatting, and canvas handles' },
+    { name: 'qr',           label: 'QR Code',              category: 'Overlay', description: 'Encode text or a URL as a QR / barcode (Standard & Micro QR, rMQR, Aztec, PDF417, MaxiCode, Han Xin, Barcode, or a Mars-parachute pattern) and blend it in — palette colors, module & overall shapes, size/rotate handles' },
     { name: 'tunnel',       label: 'Tunnel',               category: 'Overlay', description: 'Repeating shapes along a bezier path creating a tunnel illusion' },
     { name: 'glassBlob',    label: 'Glass Blob',           category: 'Overlay', description: 'A single glassy droplet you place, size and shape — refraction, highlight & color' },
     { name: 'cut',          label: 'Cut Out',              category: 'Overlay', description: 'Cut an ellipse/rectangle/triangle/polygon region out as a movable layer' },
@@ -261,6 +266,7 @@ export const EFFECT_CATALOG = [
     { name: 'ghostmark',     label: 'Ghostmark',            category: 'Ghost', description: 'Subtle visible mark to claim authorship — ink or clear (refract / pixel-shift), drag to place, repeat as a tiled pattern; black/white/grey or noise sourced from the image' },
     { name: 'cloak',         label: 'Cloak',                category: 'Ghost', description: 'Hide text/image in the pixels — LSB, randomized, edge-adaptive, or PVD (all PNG-only), or a short text via the Resilient DCT scheme that survives re-compression' },
     { name: 'overwrite',     label: 'Overwrite',            category: 'Ghost', description: 'Overwrite standard + custom file metadata (XMP/EXIF/GPS), preserve the original, and add an AI opt-out signal' },
+    { name: 'cipher',        label: 'Cipher',               category: 'Ghost', description: 'ARG text tool — build a reorderable stack of encodings (Caesar, spacer, morse, binary, hex, ASCII, URL, atbash), share the recipe as a code, and copy the output for use in text effects. Does not alter the image' },
     { name: 'collage',       label: 'Collage',              category: 'Ghost', description: 'Split the canvas into a grid and load an image into each cell — images skew to fill; reorder cells by drag handle' },
     { name: 'slicer',        label: 'Slicer',               category: 'Ghost', description: 'Inverse collage — split the image along a grid and export each cell as its own numbered file' },
 
