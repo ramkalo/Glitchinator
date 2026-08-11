@@ -40,6 +40,7 @@ function applyQR(ctx, p) {
         coords: p.qrType === 'mars' ? (p.qrMarsCoords || '') : '',
         ecc: p.qrEcc,
         moduleShape: meta.moduleShapeable ? p.qrModuleShape : 'square',
+        centerGap: meta.moduleShapeable ? (p.qrCenterGap || 0) : 0,
         overallShape: p.qrOverallShape,
         dark,
         bg,
@@ -66,7 +67,7 @@ export const qrEffect = {
     blendPrefix: 'qr',
     bindUniforms: (gl, prog, p) => { fade.bindUniforms(gl, prog, p); blend.bindUniforms(gl, prog, p); },
     paramKeys: [
-        'qrText', 'qrIsUrl', 'qrType', 'qrEcc', 'qrMarsCoords', 'qrModuleShape', 'qrOverallShape',
+        'qrText', 'qrIsUrl', 'qrType', 'qrEcc', 'qrMarsCoords', 'qrModuleShape', 'qrOverallShape', 'qrCenterGap',
         'qrColor', 'qrColorCustom', 'qrBg', 'qrBgCustom',
         'qrX', 'qrY', 'qrSize', 'qrAngle',
         ...fade.paramKeys,
@@ -83,6 +84,7 @@ export const qrEffect = {
         qrMarsCoords:   { default: '', label: 'GPS Coords — outer ring (e.g. 34 11 58 N 118 10 31 W)' },
         qrModuleShape:  { default: 'square', label: 'Module Shape', options: [['square', 'Square'], ['circle', 'Circle'], ['hexagon', 'Hexagon']] },
         qrOverallShape: { default: 'square', label: 'Overall Shape', options: [['square', 'Square'], ['rounded', 'Rounded'], ['circle', 'Circle']] },
+        qrCenterGap:    { default: 0, min: 0, max: 35, label: 'Center Gap % (for a logo)' },
         qrColor:        { default: 'palette0', label: 'Code Color', type: 'paletteSelect', options: [...STANDARD_COLOR_OPTIONS, ['custom', 'Custom']], customParam: 'qrColorCustom' },
         qrColorCustom:  { default: '#000000', type: 'color', hidden: true },
         qrBg:           { default: 'custom', label: 'Background', type: 'paletteSelect', options: [['none', 'Transparent'], ...STANDARD_COLOR_OPTIONS, ['custom', 'Custom']], customParam: 'qrBgCustom' },
@@ -102,7 +104,7 @@ export const qrEffect = {
             : ['qrText', 'qrIsUrl', 'qrType', 'qrEcc'];
         return [
             { label: 'Content', keys: content },
-            { label: 'Style', keys: meta.moduleShapeable ? ['qrOverallShape', 'qrModuleShape'] : ['qrOverallShape'] },
+            { label: 'Style', keys: meta.moduleShapeable ? ['qrOverallShape', 'qrModuleShape', 'qrCenterGap'] : ['qrOverallShape'] },
             { label: 'Colors', keys: ['qrColor', 'qrBg'] },
             blend.uiGroup,
             fade.uiGroup,

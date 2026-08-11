@@ -201,6 +201,15 @@ function renderMars(opts) {
     return { canvas: cv, status: warnings.length ? 'truncated' : 'ok', message: warnings.join(' ') };
 }
 
+// Punch a transparent square hole in the center (for a logo/image/text inset on a layer above).
+// Only used for high-EC matrix codes, which can still scan with the center covered.
+function clearCenter(cv, pct) {
+    const g = Math.min(0.35, pct / 100);   // capped so the code stays scannable (High EC ≈ 30%)
+    if (g <= 0) return;
+    const gw = cv.width * g, gh = cv.height * g;
+    cv.getContext('2d').clearRect((cv.width - gw) / 2, (cv.height - gh) / 2, gw, gh);
+}
+
 // Clip the rendered bitmap to the overall shape (baked into a fresh transparent canvas).
 function applyOverallShape(src, shape) {
     if (shape === 'square') return src;
@@ -234,6 +243,7 @@ async function generate(opts) {
     const bwip = (await import('@bwip-js/browser')).default;
     const useCustom = meta.moduleShapeable && opts.moduleShape !== 'square';
     const native = useCustom ? renderMatrixCustom(bwip, meta, opts) : renderViaToCanvas(bwip, meta, opts);
+    if (meta.moduleShapeable && opts.centerGap > 0) clearCenter(native, opts.centerGap);
     return { canvas: applyOverallShape(native, opts.overallShape), status: 'ok', message: '' };
 }
 
