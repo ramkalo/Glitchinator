@@ -231,6 +231,35 @@ body {
     touch-action: none; /* allow our touchmove handlers to call preventDefault */
 }
 
+/* Reset-zoom button — appears in the lower-left of the canvas area while zoomed/panned.
+   Lives in the static .canvas-area (not the transformed wrapper) so it stays put. */
+.reset-zoom-btn {
+    position: absolute;
+    left: 16px;
+    bottom: 16px;
+    z-index: 10;
+    pointer-events: auto;
+    background: rgba(10, 10, 26, 0.92);
+    color: var(--text);
+    border: 1px solid var(--accent);
+    padding: 8px 14px;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 0.85rem;
+    border-radius: 0;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    touch-action: manipulation;
+}
+
+.reset-zoom-btn:hover {
+    border-color: var(--accent-hover);
+    background: rgba(20, 20, 40, 0.95);
+}
+
+.reset-zoom-btn.hidden {
+    display: none;
+}
+
 /* Sheet handle hidden on desktop */
 .sheet-handle {
     display: none;

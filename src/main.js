@@ -10,6 +10,7 @@ import { savePreset, loadPreset, renderPresetList, importPreset } from './ui/pre
 import { initMobileUI } from './ui/mobile.js';
 import { initBottomSheet } from './ui/bottomsheet.js';
 import { initTouchGestures } from './ui/touch.js';
+import { initViewport } from './ui/viewportZoom.js';
 import { initStackPanel, renderStackList } from './ui/stackPanel.js';
 import { initLogo } from './ui/logo.js';
 import { initPreferences } from './ui/preferences.js';
@@ -302,6 +303,7 @@ initStackPanel();
 initMobileUI();
 initBottomSheet();
 initTouchGestures();
+initViewport();
 initLogo();
 initPreferences();
 initRevealTool();

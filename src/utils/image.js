@@ -10,6 +10,7 @@ import {
 } from '../renderer/glstate.js';
 import { uploadToTexture } from '../renderer/webgl.js';
 import { processImage } from '../renderer/pipeline.js';
+import { resetViewport } from '../ui/viewportZoom.js';
 import { showNotification } from './notifications.js';
 
 export function loadImage(file) {
@@ -23,6 +24,7 @@ export function loadImage(file) {
         const img = new Image();
         img.onload = function() {
             setOriginalImage(img);
+            resetViewport();
 
             document.getElementById('imageInfo').textContent = `${img.width} \u00d7 ${img.height}px`;
             document.getElementById('dropZone').classList.add('hidden');
@@ -73,6 +75,7 @@ export function loadBlankCanvas(width, height, color) {
 
     setOriginalImage(offscreen);
     setOriginalFileBytes(null); // blank canvas has no source file / metadata
+    resetViewport();
 
     document.getElementById('imageInfo').textContent = `${width} × ${height}px`;
     document.getElementById('dropZone').classList.add('hidden');

@@ -1,12 +1,13 @@
 // Touch gesture handlers for the canvas area:
-//   • Pinch-to-zoom + 1-finger pan (CSS transform, re-render on release)
+//   • Pinch-to-zoom + 1-finger pan (persistent — shared viewport transform)
 //   • Long-press compare (hold to see original, release to restore)
 //   • Canvas-drag adjust (horizontal drag maps to active slider range)
 
-import { canvas, originalImage } from '../renderer/glstate.js';
+import { originalImage } from '../renderer/glstate.js';
 import { blitOriginalToScreen } from '../renderer/webgl.js';
 import { processImage } from '../renderer/pipeline.js';
 import { activeSlider, updatePillValue } from './bottomsheet.js';
+import { zoomAt, panBy, resetViewport, getScale, isZoomed } from './viewportZoom.js';
 
 const isMobile = () =>
     window.matchMedia('(max-width: 900px), (pointer: coarse)').matches ||
@@ -19,11 +20,9 @@ export function initTouchGestures() {
     const overlayCanvas = document.getElementById('overlayCanvas');
     if (!wrapper) return;
 
-    // ── Zoom / pan state ────────────────────────────────────────────────
-    let scale = 1, panX = 0, panY = 0;
-    let pinchStartDist  = 0;
-    let pinchStartScale = 1;
-    let pinchStartMidX  = 0, pinchStartMidY = 0;
+    // ── Pinch state ─────────────────────────────────────────────────────
+    let pinchPrevDist = 0;
+    let pinchPrevMidX = 0, pinchPrevMidY = 0;
     let isPinching = false;
 
     function touchDist(t) {
@@ -34,17 +33,6 @@ export function initTouchGestures() {
             x: (t[0].clientX + t[1].clientX) / 2,
             y: (t[0].clientY + t[1].clientY) / 2,
         };
-    }
-    function applyTransform() {
-        wrapper.style.transform = `scale(${scale}) translate(${panX}px, ${panY}px)`;
-    }
-    function resetTransform(animate) {
-        if (animate) {
-            wrapper.style.transition = 'transform 0.25s ease';
-            setTimeout(() => { wrapper.style.transition = ''; }, 260);
-        }
-        scale = 1; panX = 0; panY = 0;
-        wrapper.style.transform = '';
     }
 
     // ── Long-press compare state ─────────────────────────────────────────
@@ -68,11 +56,10 @@ export function initTouchGestures() {
             // ── Pinch start ────────────────────────────────────────────
             isPinching = true;
             clearLongPress();
-            pinchStartDist  = touchDist(touches);
-            pinchStartScale = scale;
+            pinchPrevDist = touchDist(touches);
             const mid = touchMid(touches);
-            pinchStartMidX = mid.x;
-            pinchStartMidY = mid.y;
+            pinchPrevMidX = mid.x;
+            pinchPrevMidY = mid.y;
             e.preventDefault();
 
         } else if (touches.length === 1) {
@@ -86,9 +73,11 @@ export function initTouchGestures() {
                 return;
             }
 
-            // ── Long-press start ──────────────────────────────────────
+            // Track finger for pan + long-press.
             lpStartX = t.clientX;
             lpStartY = t.clientY;
+
+            // ── Long-press start ──────────────────────────────────────
             longPressTimer = setTimeout(() => {
                 longPressActive = true;
                 if (!originalImage) return;
@@ -111,16 +100,14 @@ export function initTouchGestures() {
             const newDist = touchDist(touches);
             const newMid  = touchMid(touches);
 
-            scale = Math.min(5, Math.max(0.8,
-                pinchStartScale * (newDist / pinchStartDist)));
+            if (pinchPrevDist > 0) {
+                zoomAt(newMid.x, newMid.y, newDist / pinchPrevDist);
+            }
+            panBy(newMid.x - pinchPrevMidX, newMid.y - pinchPrevMidY);
+            pinchPrevDist = newDist;
+            pinchPrevMidX = newMid.x;
+            pinchPrevMidY = newMid.y;
 
-            // Pan by midpoint delta (corrected for current scale)
-            panX += (newMid.x - pinchStartMidX) / scale;
-            panY += (newMid.y - pinchStartMidY) / scale;
-            pinchStartMidX = newMid.x;
-            pinchStartMidY = newMid.y;
-
-            applyTransform();
             e.preventDefault();
 
         } else if (touches.length === 1) {
@@ -147,13 +134,11 @@ export function initTouchGestures() {
                 e.preventDefault();
             }
 
-            // ── 1-finger pan when zoomed ──────────────────────────────
-            if (!document.body.classList.contains('touch-adjust-active') && scale > 1) {
-                panX += (t.clientX - lpStartX) / scale;
-                panY += (t.clientY - lpStartY) / scale;
+            // ── 1-finger pan when zoomed in ───────────────────────────
+            if (!document.body.classList.contains('touch-adjust-active') && getScale() > 1) {
+                panBy(t.clientX - lpStartX, t.clientY - lpStartY);
                 lpStartX = t.clientX;
                 lpStartY = t.clientY;
-                applyTransform();
                 e.preventDefault();
             }
         }
@@ -175,22 +160,17 @@ export function initTouchGestures() {
             const now = Date.now();
             const dx  = t.clientX - lastTapX;
             const dy  = t.clientY - lastTapY;
-            if (now - lastTapTime < 300 && Math.hypot(dx, dy) < 30 && scale !== 1) {
-                resetTransform(true);
-                processImage();
+            if (now - lastTapTime < 300 && Math.hypot(dx, dy) < 30 && isZoomed()) {
+                resetViewport(true);
             }
             lastTapTime = now;
             lastTapX = t.clientX;
             lastTapY = t.clientY;
         }
 
-        // Pinch released — clear transform and re-render at full resolution
-        if (e.touches.length < 2 && isPinching) {
+        // Pinch released
+        if (e.touches.length < 2) {
             isPinching = false;
-            if (scale !== 1) {
-                resetTransform(true);
-                processImage();
-            }
         }
 
         adjustStartX = null;

@@ -36,6 +36,7 @@ import { tunnelEffect }          from './tunnel.js';
 import { viewportEffect }        from './viewport.js';
 import { wrinkleEffect }         from './wrinkle.js';
 import { causticsEffect }        from './caustics.js';
+import { frameEffect }           from './frame.js';
 import { redactEffect }          from './redact.js';
 import { ghostmarkEffect }       from './ghostmark.js';
 import { cloakEffect }           from './cloak.js';
@@ -170,6 +171,7 @@ export const EFFECTS = [
     slicerEffect,
     wrinkleEffect,
     causticsEffect,
+    frameEffect,
     redactEffect,
     ghostmarkEffect,
     cloakEffect,
@@ -266,6 +268,7 @@ export const EFFECT_CATALOG = [
     { name: 'cut',          label: 'Cut Out',              category: 'Overlay', description: 'Cut an ellipse/rectangle/triangle/polygon region out as a movable layer' },
     { name: 'wrinkle',      label: 'Wrinkle',              category: 'Overlay', description: 'Cellophane wrap / ripple overlay with refraction and ridge sheen' },
     { name: 'caustics',     label: 'Caustics',             category: 'Overlay', description: 'Underwater light caustics — the bright net of pool-bottom light lines' },
+    { name: 'frame',        label: 'Frame',                category: 'Overlay', description: 'Plain polaroid-style border with adjustable width, inner-corner roundness, and color' },
 
     // ── Ghost ──
     { name: 'redact',        label: 'Redact',               category: 'Ghost', description: 'Strip hidden data (LSB steg + robust watermark), metadata (EXIF/XMP/GPS), and trailing data before sharing — the counter-tool to Cloak and Overwrite' },

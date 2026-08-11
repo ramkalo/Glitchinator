@@ -104,8 +104,10 @@ function renderCategoryList(category) {
     const list = document.getElementById('effectCatalogList');
     if (!list) return;
     list.innerHTML = '';
-    for (const entry of EFFECT_CATALOG) {
-        if (entry.category !== category) continue;
+    const entries = EFFECT_CATALOG
+        .filter((entry) => entry.category === category)
+        .sort((a, b) => a.label.localeCompare(b.label));
+    for (const entry of entries) {
         list.appendChild(makeCatalogItem(entry));
     }
     list.scrollTop = 0;
