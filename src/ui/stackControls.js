@@ -32,6 +32,13 @@ export function labelPreviewText(effect, params) {
 let activeSliderGroup = null;
 let _paletteDragSrc = null; // { instId, index } while a palette swatch is being dragged
 
+// The currently-built Collage panel's cell-list refresher, so an on-canvas swap
+// (dispatched from the collage overlay) can re-sync the list labels in place.
+let _collageListSync = null; // { instId, render } | null
+document.addEventListener('collage-images-changed', (e) => {
+    if (_collageListSync && _collageListSync.instId === e.detail?.instId) _collageListSync.render();
+});
+
 // Paint an accent fill up to the thumb so the track position reads clearly.
 // Bipolar sliders (min < 0 < max) anchor the fill at their zero point and
 // extend outward toward the thumb; unipolar sliders fill from the left edge.
@@ -1169,6 +1176,9 @@ export function buildEffectBody(inst, onRebuild) {
         renderCellRows();
         section.appendChild(list);
         content.appendChild(section);
+
+        // Let an on-canvas swap (collage overlay) refresh this list's labels in place.
+        _collageListSync = { instId: inst.id, render: renderCellRows };
 
         // Live-update the list when the grid-size sliders move (input, not change).
         for (const k of ['collageCols', 'collageRows']) {

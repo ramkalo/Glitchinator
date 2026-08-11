@@ -40,6 +40,18 @@ export function moveCollageImage(instId, from, to) {
     arr.splice(to, 0, moved);
 }
 
+// Swap the entries in two slots (swap semantics for the on-canvas grid drag).
+// Null-safe: swapping with an empty slot simply moves the image there.
+export function swapCollageImage(instId, a, b) {
+    if (a === b) return;
+    const arr = getCollageImages(instId);
+    const max = Math.max(a, b);
+    while (arr.length <= max) arr.push(null);
+    const tmp = arr[a];
+    arr[a] = arr[b];
+    arr[b] = tmp;
+}
+
 // Free an instance's images when its effect is removed (called from the UI clear-all).
 export function disposeCollageImages(instId) {
     const arr = _images.get(instId);

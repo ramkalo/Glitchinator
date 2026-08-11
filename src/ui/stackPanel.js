@@ -6,7 +6,7 @@ import { buildEffectBody, labelPreviewText } from './stackControls.js';
 import { blitOriginalToScreen } from '../renderer/webgl.js';
 import { processImageImmediate } from '../renderer/pipeline.js';
 import { originalImage } from '../renderer/glstate.js';
-import { showFadeOverlay, hideFadeOverlay, showCropOverlay, hideCropOverlay, showViewportOverlay, hideViewportOverlay, showMatrixRainOverlay, hideMatrixRainOverlay, showLineDragOverlay, hideLineDragOverlay, showChromaOverlay, hideChromaOverlay, showVignetteOverlay, hideVignetteOverlay, showCorruptedOverlay, hideCorruptedOverlay, showGhostmarkOverlay, hideGhostmarkOverlay, showCRTCurvatureOverlay, hideCRTCurvatureOverlay, showTextOverlay, hideTextOverlay, showDoubleExposureOverlay, hideDoubleExposureOverlay, showShapeStickerOverlay, hideShapeStickerOverlay, showKaleidoscopeOverlay, hideKaleidoscopeOverlay, showDigitalSmearOverlay, hideDigitalSmearOverlay, showDrawToolOverlay, hideDrawToolOverlay, showMeshOverlay, hideMeshOverlay, showTunnelOverlay, hideTunnelOverlay, showFilmSoupOverlay, hideFilmSoupOverlay, showColorGelOverlay, hideColorGelOverlay, showHalftoneOverlay, hideHalftoneOverlay, showWrinkleOverlay, hideWrinkleOverlay, showCausticsOverlay, hideCausticsOverlay, showResinOverlay, hideResinOverlay, showGlassBlobOverlay, hideGlassBlobOverlay, showCutOverlay, hideCutOverlay, showQROverlay, hideQROverlay } from './canvasPicker.js';
+import { showFadeOverlay, hideFadeOverlay, showCropOverlay, hideCropOverlay, showViewportOverlay, hideViewportOverlay, showMatrixRainOverlay, hideMatrixRainOverlay, showLineDragOverlay, hideLineDragOverlay, showChromaOverlay, hideChromaOverlay, showVignetteOverlay, hideVignetteOverlay, showCorruptedOverlay, hideCorruptedOverlay, showGhostmarkOverlay, hideGhostmarkOverlay, showCRTCurvatureOverlay, hideCRTCurvatureOverlay, showTextOverlay, hideTextOverlay, showDoubleExposureOverlay, hideDoubleExposureOverlay, showShapeStickerOverlay, hideShapeStickerOverlay, showKaleidoscopeOverlay, hideKaleidoscopeOverlay, showDigitalSmearOverlay, hideDigitalSmearOverlay, showDrawToolOverlay, hideDrawToolOverlay, showMeshOverlay, hideMeshOverlay, showTunnelOverlay, hideTunnelOverlay, showFilmSoupOverlay, hideFilmSoupOverlay, showColorGelOverlay, hideColorGelOverlay, showHalftoneOverlay, hideHalftoneOverlay, showWrinkleOverlay, hideWrinkleOverlay, showCausticsOverlay, hideCausticsOverlay, showResinOverlay, hideResinOverlay, showGlassBlobOverlay, hideGlassBlobOverlay, showCutOverlay, hideCutOverlay, showQROverlay, hideQROverlay, showCollageOverlay, hideCollageOverlay } from './canvasPicker.js';
 
 let _expandedId = null;
 
@@ -374,6 +374,7 @@ export function renderStackList() {
     if (newEffect !== 'glassBlob')      hideGlassBlobOverlay();
     if (newEffect !== 'cut')            hideCutOverlay();
     if (newEffect !== 'qr')             hideQROverlay();
+    if (newEffect !== 'collage')        hideCollageOverlay();
 
     if (!expandedInst) return;
 
@@ -410,6 +411,7 @@ export function renderStackList() {
     else if (newEffect === 'glassBlob')     showGlassBlobOverlay(expandedInst);
     else if (newEffect === 'cut')           showCutOverlay(expandedInst);
     else if (newEffect === 'qr')            showQROverlay(expandedInst);
+    else if (newEffect === 'collage')       showCollageOverlay(expandedInst);
 }
 
 // --- Pointer-based drag-and-drop ---

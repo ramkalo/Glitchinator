@@ -302,6 +302,13 @@ export function getQRStatus(instId) {
     return e ? { status: e.status || 'ok', message: e.message || '' } : null;
 }
 
+/** Aspect ratio (height / width) of the generated code, or 1 before anything is generated.
+ *  Lets the on-canvas overlay match rectangular symbologies (rMQR, PDF417, Barcode). */
+export function getQRAspect(instId) {
+    const e = _cache.get(instId);
+    return (e && e.canvas && e.canvas.width) ? e.canvas.height / e.canvas.width : 1;
+}
+
 /** Called when the payload is empty — drops any cached code/warning so the card clears cleanly. */
 export function resetQR(instId) {
     const e = _cache.get(instId);

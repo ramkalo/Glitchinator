@@ -35,6 +35,8 @@ import { drawResin, hitTestResin, onDragResin } from './overlays/resinOverlay.js
 import { drawGlassBlob, hitTestGlassBlob, onDragGlassBlob } from './overlays/glassBlobOverlay.js';
 import { drawCut, hitTestCut, onDragCut, resetCutVertices } from './overlays/cutOverlay.js';
 import { drawQR, hitTestQR, onDragQR } from './overlays/qrOverlay.js';
+import { drawCollage, hitTestCollage, onDragCollage } from './overlays/collageOverlay.js';
+import { swapCollageImage } from '../effects/collage.js';
 import { deleteActivePaste } from './cutTool.js';
 
 // ── onStackChange redraw dispatcher ──────────────────────────────────────────
@@ -133,6 +135,7 @@ onStackChange((key) => {
     if (state.mode === 'resin')        drawResin(inst.params);
     if (state.mode === 'glassBlob')    drawGlassBlob(inst.params);
     if (state.mode === 'qr')           drawQR(inst.params);
+    if (state.mode === 'collage')      drawCollage(inst.params);
     if (state.mode === 'cut') {
         const p = inst.params;
         const shape = p.cutShape;
@@ -146,6 +149,15 @@ onStackChange((key) => {
         }
         drawCut(p);
     }
+});
+
+// QR generation is async; when it finishes the code's aspect ratio becomes known, so redraw the
+// active QR overlay to match it (rMQR/PDF417/Barcode are rectangular). qrEngine fires 'qr-status'.
+document.addEventListener('qr-status', (e) => {
+    if (state.mode !== 'qr' || !state.instId) return;
+    if (e.detail && e.detail.instId && e.detail.instId !== state.instId) return;
+    const inst = getStack().find(i => i.id === state.instId);
+    if (inst) drawQR(inst.params);
 });
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -202,6 +214,15 @@ export function showQROverlay(inst) {
 
 export function hideQROverlay() {
     if (state.mode === 'qr') _hideActive();
+}
+
+export function showCollageOverlay(inst) {
+    _activate('collage', inst, null, null);
+    drawCollage(inst.params);
+}
+
+export function hideCollageOverlay() {
+    if (state.mode === 'collage') _hideActive();
 }
 
 export function showCropOverlay(inst) {
@@ -585,6 +606,7 @@ function _hideActive() {
     state.skewKey    = null;
     state.handle     = null;
     state.dragAnchor = null;
+    state.collageTarget = null;
     uiOverlay.getContext('2d').clearRect(0, 0, uiOverlay.width, uiOverlay.height);
     uiOverlay.style.pointerEvents = 'none';
     uiOverlay.style.cursor = '';
@@ -701,6 +723,8 @@ function getCursorForMode(mode, h) {
                 : (h === 'edgeB') ? 'ns-resize' : 'default';
         case 'drawTool':
             return 'crosshair';
+        case 'collage':
+            return (h && h.startsWith('cell:')) ? 'grab' : 'default';
         default:
             return h ? 'grab' : 'default';
     }
@@ -735,6 +759,7 @@ const HIT_FNS = {
     resin:          hitTestResin,
     glassBlob:      hitTestGlassBlob,
     cut:            hitTestCut,
+    collage:        hitTestCollage,
 };
 
 const DRAG_FNS = {
@@ -763,6 +788,7 @@ const DRAG_FNS = {
     resin:          onDragResin,
     glassBlob:      onDragGlassBlob,
     cut:            onDragCut,
+    collage:        onDragCollage,
 };
 
 const DRAW_FNS = {
@@ -794,6 +820,7 @@ const DRAW_FNS = {
     resin:          drawResin,
     glassBlob:      drawGlassBlob,
     cut:            drawCut,
+    collage:        drawCollage,
 };
 
 function onHover(e) {
@@ -1106,11 +1133,13 @@ function onUp() {
     const handle     = state.handle;
     const mode       = state.mode;
     const instId     = state.instId;
+    const collageTo  = state.collageTarget;
 
     state.dragging   = false;
     state.handle     = null;
     state.dragAnchor = null;
     state.hasDragged = false;
+    state.collageTarget = null;
     uiOverlay.style.cursor = 'default';
     uiOverlay.removeEventListener('pointermove', onDrag);
     uiOverlay.removeEventListener('pointerup',   onUp);
@@ -1137,6 +1166,16 @@ function onUp() {
     if (mode === 'drawTool') {
         const inst2 = getStack().find(i => i.id === instId);
         if (inst2) finalizeDrawToolStroke(instId, inst2.params);
+    }
+
+    // Collage: swap the dragged cell with the drop-target cell, then re-render.
+    if (mode === 'collage') {
+        const from = (typeof handle === 'string' && handle.startsWith('cell:')) ? parseInt(handle.slice(5), 10) : null;
+        if (from != null && collageTo != null && collageTo !== from) {
+            swapCollageImage(instId, from, collageTo);
+            processImageImmediate();
+            document.dispatchEvent(new CustomEvent('collage-images-changed', { detail: { instId } }));
+        }
     }
 
     DRAW_FNS[mode]?.(getStack().find(i => i.id === instId)?.params ?? inst.params);

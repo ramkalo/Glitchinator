@@ -17,4 +17,5 @@ export const state = {
     vpResetting: false,  // re-entrancy guard for _resetPolygonVertices
     cutResetting: false, // re-entrancy guard for resetCutVertices
     cutActive:    -1,    // index of the selected pasted copy in the Cut Out tool
+    collageTarget: null, // cell index currently under the pointer during a collage swap-drag
 };

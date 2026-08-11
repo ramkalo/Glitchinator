@@ -1,7 +1,7 @@
 import {
     canvas, gl,
     originalImage,
-    fboPool, programCache, quadVAO,
+    fboPool, programCache, quadVAO, quadVBO,
     overlayCanvas, overlayCtx,
     setFboPool, setSecondTexture,
 } from './glstate.js';
@@ -15,13 +15,15 @@ import { buildBlendControl, buildFadeControl } from '../effects/controls/index.j
 
 // --- GLSL sources ---
 
+// aCorner comes from quadVBO (glstate.js): 4 corners in [0,1]×[0,1], TRIANGLE_STRIP order.
+// Using a real attribute at location 0 (rather than gl_VertexID) keeps attrib 0's array
+// enabled, avoiding desktop-GL fake-attrib-0 emulation and its per-draw console warning.
 const VERT_SRC = `#version 300 es
+layout(location = 0) in vec2 aCorner;
 out vec2 vUV;
 void main() {
-    float x = float(gl_VertexID & 1);
-    float y = float((gl_VertexID >> 1) & 1);
-    gl_Position = vec4(x * 2.0 - 1.0, y * 2.0 - 1.0, 0.0, 1.0);
-    vUV = vec2(x, y);
+    gl_Position = vec4(aCorner * 2.0 - 1.0, 0.0, 1.0);
+    vUV = aCorner;
 }`;
 
 // Prepended to every fragment shader source
@@ -697,4 +699,5 @@ export function cleanupWebGL() {
     programCache.forEach(prog => gl.deleteProgram(prog));
     programCache.clear();
     gl.deleteVertexArray(quadVAO);
+    if (quadVBO) gl.deleteBuffer(quadVBO);
 }

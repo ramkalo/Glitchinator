@@ -5,6 +5,9 @@ export let secondTexture = null;
 export let fboPool = [null, null]; // [{ fbo, tex, width, height }, ...]
 export let programCache = new Map(); // fragSrc → WebGLProgram (with ._locs)
 export let quadVAO = null;
+export let quadVBO = null; // quad-corner buffer bound to attrib 0 (see init) — keeps an
+                           // always-used attribute at location 0 to avoid the desktop-GL
+                           // "vertex attrib 0 array not enabled" emulation warning
 
 export let overlayCanvas = document.getElementById('overlayCanvas');
 export let overlayCtx = null;
@@ -27,6 +30,21 @@ function init() {
     if (!ctx) throw new Error('WebGL2 is required. Please use Chrome, Firefox, or Edge.');
     gl = ctx;
     quadVAO = gl.createVertexArray();
+
+    // Drive the full-screen quad from a real attribute at location 0. Sourcing the quad
+    // purely from gl_VertexID leaves attrib 0's array disabled, which forces slow "fake
+    // vertex attrib 0" emulation on desktop GL (Mac) and logs a warning on every draw.
+    // Corners are in [0,1] × [0,1]; the vertex shader maps them to clip space and to vUV,
+    // matching TRIANGLE_STRIP order for drawArrays(…, 0, 4).
+    gl.bindVertexArray(quadVAO);
+    quadVBO = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadVBO);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    gl.bindVertexArray(null);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
     if (overlayCanvas) overlayCtx = overlayCanvas.getContext('2d');
 }
 init();
