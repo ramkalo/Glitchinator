@@ -3,6 +3,7 @@ import { basicEffect }           from './basic.js';
 import { blurEffect }            from './blur.js';
 import { chromaEffect }          from './chroma.js';
 import { colorGelEffect }        from './colorGel.js';
+import { colorCurveEffect }      from './colorCurve.js';
 import { colorPaletteEffect }    from './colorPalette.js';
 import { colorRemapEffect }      from './colorRemap.js';
 import { corruptedEffect }       from './corrupted.js';
@@ -136,6 +137,7 @@ export const EFFECTS = [
     doubleExposureEntryEffect,
     doubleExposureEffect,
     basicEffect,
+    colorCurveEffect,
     hueShiftEffect,
     digitizeEffect,
     grainEffect,
@@ -225,6 +227,7 @@ export const EFFECT_CATALOG = [
     // ── Adjust ──
     { name: 'basic',          label: 'Basic Adjustments',    category: 'Adjust',  description: 'Brightness, contrast, saturation, and color' },
     { name: 'blur',           label: 'Blur',                 category: 'Adjust',  description: 'Gaussian blur shaped like a vignette — sharp center, soft edges' },
+    { name: 'colorCurve',     label: 'Color Curve',          category: 'Adjust',  description: 'Curve editor over a live histogram — Value/R/G/B tone curves plus Hue vs Hue, Hue vs Sat, Hue vs Luma, and Luma vs Sat modes' },
     { name: 'colorGel',      label: 'Color Gel',            category: 'Adjust',  description: 'Tint the image with a solid or gradient color gel' },
     { name: 'colorPalette',    label: 'Color Palette',         category: 'Adjust',  description: 'Define 8 custom colors that other effects can reference' },
     { name: 'crop',           label: 'Crop',                 category: 'Adjust',  description: 'Crop the image' },

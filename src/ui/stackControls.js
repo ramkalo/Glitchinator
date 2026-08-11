@@ -13,6 +13,7 @@ import { toggleBlendMapOverlay, hideBlendMapOverlay } from './canvasPicker.js';
 import { performCut, addPaste, clearCut } from './cutTool.js';
 import { buildPaletteSwatchControl, resolveColorKey, getActivePaletteFor } from './controls/paletteColor.js';
 import { buildHueGridControl } from './controls/hueGrid.js';
+import { buildCurveEditorControl } from './controls/curveEditor.js';
 import { buildStopSlider } from './controls/stopSlider.js';
 import { GEL_STOPS, gelMode } from '../effects/colorGel.js';
 import { rightAngleCorners } from './overlays/textBoxGeometry.js';
@@ -709,6 +710,17 @@ export function buildEffectBody(inst, onRebuild) {
 
             if (onRebuild) onRebuild();
         });
+    }
+
+    if (inst.effectName === 'colorCurve') {
+        // The mode/channel selects already trigger onRebuild via the generic enum
+        // handler (rebuilding this whole body), which swaps the x-axis / histogram
+        // and, for non-'value' modes, hides the channel selector. Just inject the
+        // curve canvas after the histogram toggle.
+        const anchor = content.querySelector('[data-inst-param="curveShowHistogram"]')?.closest('.control-group');
+        const editor = buildCurveEditorControl(inst, { onRebuild });
+        if (anchor) anchor.after(editor);
+        else content.appendChild(editor);
     }
 
     if (inst.effectName === 'colorRemap') {
