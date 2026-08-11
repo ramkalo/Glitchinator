@@ -7,6 +7,7 @@ import { colorPaletteEffect }    from './colorPalette.js';
 import { colorRemapEffect }      from './colorRemap.js';
 import { corruptedEffect }       from './corrupted.js';
 import { cropEffect }            from './crop.js';
+import { expandEffect }          from './expand.js';
 import { resizeEffect }          from './resize.js';
 import { digitizeEffect }        from './digitize.js';
 import { doubleExposureEffect }  from './doubleExposure.js';
@@ -129,6 +130,7 @@ function validateEffect(effect) {
 export const EFFECTS = [
     transformEffect,
     cropEffect,
+    expandEffect,
     resizeEffect,
     colorPaletteEffect,
     doubleExposureEntryEffect,
@@ -226,6 +228,7 @@ export const EFFECT_CATALOG = [
     { name: 'colorGel',      label: 'Color Gel',            category: 'Adjust',  description: 'Tint the image with a solid or gradient color gel' },
     { name: 'colorPalette',    label: 'Color Palette',         category: 'Adjust',  description: 'Define 8 custom colors that other effects can reference' },
     { name: 'crop',           label: 'Crop',                 category: 'Adjust',  description: 'Crop the image' },
+    { name: 'expand',         label: 'Expand',               category: 'Adjust',  description: 'Add white, black, or edge-stretched pixels around the image (inverse crop)' },
     { name: 'glow',           label: 'Glow',                 category: 'Adjust',  description: 'Bloom halo around bright areas' },
     { name: 'grain',          label: 'Grain & Noise',        category: 'Adjust',  description: 'Analog film grain and digital noise types' },
     { name: 'hueShift',       label: 'Hue Shift',            category: 'Adjust',  description: 'Rotate all hues around the color wheel without quantizing' },
