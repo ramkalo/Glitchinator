@@ -171,6 +171,7 @@ export function renderStackList() {
 
     if (stack.length === 0) {
         container.innerHTML = '<div class="stack-empty">No effects added yet.<br>Pick a category tab above to add one.</div>';
+        updateExpandedEffectBar(null);
         return;
     }
 
@@ -429,6 +430,24 @@ export function renderStackList() {
     else if (newEffect === 'cut')           showCutOverlay(expandedInst);
     else if (newEffect === 'qr')            showQROverlay(expandedInst);
     else if (newEffect === 'collage')       showCollageOverlay(expandedInst);
+
+    updateExpandedEffectBar(expandedInst);
+}
+
+// Mobile: a thin bar above the Show/Hide handle naming the effect whose controls
+// are open in the (collapsed) drawer. CSS only shows it while the drawer is collapsed.
+function updateExpandedEffectBar(expandedInst) {
+    const bar = document.getElementById('expandedEffectBar');
+    if (!bar) return;
+    const textEl = bar.querySelector('.expanded-effect-bar-text');
+    if (expandedInst) {
+        const entry = EFFECT_CATALOG.find(e => e.name === expandedInst.effectName);
+        const label = entry?.label ?? getEffect(expandedInst.effectName)?.label ?? expandedInst.effectName;
+        if (textEl) textEl.textContent = `showing controls for ${label}`;
+        bar.classList.remove('hidden');
+    } else {
+        bar.classList.add('hidden');
+    }
 }
 
 // --- Pointer-based drag-and-drop ---

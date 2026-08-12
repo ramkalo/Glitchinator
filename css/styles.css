@@ -220,6 +220,11 @@ body {
     display: none;
 }
 
+/* Mobile "showing controls for X" hint bar hidden by default */
+.expanded-effect-bar {
+    display: none;
+}
+
 /* Solo-slider bar hidden by default on every viewport (no global .hidden rule
    exists in this stylesheet — each .hidden is component-scoped). */
 .solo-slider-bar.hidden {
@@ -1294,14 +1299,14 @@ input[type="checkbox"].switch:checked::after {
     }
 
     /* ── Bottom sheet ────────────────────────────────────────────────── */
-    /* Sheet is always 90vh tall; translateY shifts how much peeks above fold */
+    /* Sheet is 75vh tall; translateY slides it fully off-screen when retracted */
     .sidebar {
         position: fixed;
         bottom: 0;
         left: 0;
         right: 0;
         width: 100%;
-        height: 90vh;
+        height: 75vh;
         /* Default: fully retracted (the Show/Hide handle is a separate fixed
            element, so the drawer itself just slides completely off-screen) */
         transform: translateY(100%);
@@ -1318,7 +1323,7 @@ input[type="checkbox"].switch:checked::after {
         box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5);
     }
 
-    /* Expanded: full 90vh visible */
+    /* Expanded: full 75vh visible */
     .sidebar.sheet-expanded {
         transform: translateY(0);
     }
@@ -1404,6 +1409,39 @@ input[type="checkbox"].switch:checked::after {
 
     .sheet-handle-label {
         pointer-events: none;
+    }
+
+    /* ── "showing controls for X" hint — thin bar stacked on top of the handle,
+       shown only while the drawer is collapsed with an effect expanded ── */
+    .expanded-effect-bar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: calc(var(--qb-h) + 48px);   /* directly on top of the 48px handle */
+        z-index: 105;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 22px;
+        padding: 3px 12px;
+        background: var(--bg-input);
+        border-top: 1px solid var(--border);
+        color: var(--text-dim);
+        font-size: 0.66rem;
+        letter-spacing: 0.03em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        pointer-events: none;               /* purely informational */
+    }
+
+    .expanded-effect-bar.hidden {
+        display: none;
+    }
+
+    body.drawer-expanded .expanded-effect-bar,
+    body.slider-solo-active .expanded-effect-bar {
+        display: none;
     }
 
     /* Scrollable content area inside the sheet */
