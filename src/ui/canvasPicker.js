@@ -15,6 +15,7 @@ import { drawLineDrag,       hitTestLineDrag,       onDragLineDrag       } from 
 import { drawChroma, hitTestChroma                                        } from './overlays/chromaOverlay.js';
 import { drawVignette,       hitTestVignette,       onDragVignette       } from './overlays/vignetteOverlay.js';
 import { drawCRTCurvature,   hitTestCRTCurvature,   onDragCRTCurvature  } from './overlays/crtOverlay.js';
+import { drawTransform,      hitTestTransform,      onDragTransform     } from './overlays/transformOverlay.js';
 import { drawCorrupted,      hitTestCorrupted                            } from './overlays/corruptedOverlay.js';
 import { drawGhostmark,      hitTestGhostmark,       onDragGhostmark,     ghostmarkCenterAnchor, ghostmarkRotAnchor, ghostmarkSizeAnchor } from './overlays/ghostmarkOverlay.js';
 import { drawTextOverlay,    hitTestText,            onDragText,          textCorners } from './overlays/textOverlay.js';
@@ -76,6 +77,7 @@ onStackChange((key) => {
     if (state.mode === 'chroma')        drawChroma(inst.params);
     if (state.mode === 'vignette')      drawVignette(inst.params);
     if (state.mode === 'barrelDistortion')  drawCRTCurvature(inst.params);
+    if (state.mode === 'transform')     drawTransform(inst.params);
     if (state.mode === 'corrupted')     drawCorrupted(inst.params);
     if (state.mode === 'ghostmark')     drawGhostmark(inst.params);
     if (state.mode === 'text')          drawTextOverlay(inst.params);
@@ -282,6 +284,15 @@ export function showCRTCurvatureOverlay(inst) {
 
 export function hideCRTCurvatureOverlay() {
     if (state.mode === 'barrelDistortion') _hideActive();
+}
+
+export function showTransformOverlay(inst) {
+    _activate('transform', inst, null, null);
+    drawTransform(inst.params);
+}
+
+export function hideTransformOverlay() {
+    if (state.mode === 'transform') _hideActive();
 }
 
 export function showCorruptedOverlay(inst) {
@@ -648,6 +659,8 @@ function getCursorForMode(mode, h) {
         case 'vignette':
         case 'barrelDistortion':
             return h === 'center' ? 'grab' : h === 'rot' ? 'crosshair' : h === 'edgeW' ? 'ew-resize' : h === 'edgeH' ? 'ns-resize' : 'default';
+        case 'transform':
+            return h === 'rot' ? 'crosshair' : h === 'tiltX' ? 'ns-resize' : h === 'tiltY' ? 'ew-resize' : 'default';
         case 'doubleExposure':
             return fadeCursor(h) || (h === 'imgPos' ? 'grab' : 'default');
         case 'blendMap':
@@ -748,6 +761,7 @@ const HIT_FNS = {
     lineDrag:       hitTestLineDrag,
     vignette:       hitTestVignette,
     barrelDistortion:   hitTestCRTCurvature,
+    transform:      hitTestTransform,
     corrupted:      hitTestCorrupted,
     ghostmark:      hitTestGhostmark,
     text:           hitTestText,
@@ -778,6 +792,7 @@ const DRAG_FNS = {
     lineDrag:       onDragLineDrag,
     vignette:       onDragVignette,
     barrelDistortion:   onDragCRTCurvature,
+    transform:      onDragTransform,
     text:           onDragText,
     shapeSticker:   onDragShapeSticker,
     qr:             onDragQR,
@@ -808,6 +823,7 @@ const DRAW_FNS = {
     lineDrag:       drawLineDrag,
     chroma:         drawChroma,
     vignette:       drawVignette,
+    transform:      drawTransform,
     text:           drawTextOverlay,
     doubleExposure: drawDoubleExposure,
     shapeSticker:   drawShapeSticker,
@@ -822,6 +838,31 @@ const DRAW_FNS = {
     cut:            drawCut,
     collage:        drawCollage,
 };
+
+// ── Redraw the active overlay on canvas resize ────────────────────────────────
+// When an effect changes the canvas size/orientation (e.g. Transform 90°, crop,
+// aspect change), the displayed #mainCanvas — and thus the CSS-sized uiOverlay —
+// resizes. Overlays size their drawing buffer from the canvas rect at draw time
+// (syncSize), so without a redraw their handles stay sized to the old dimensions
+// and get stretched. This does automatically what a minimize→maximize does by hand.
+// Vertices are stored in normalized (%) coords, so a plain redraw at the new size
+// is correct — no reseeding needed.
+function redrawActiveOverlay() {
+    if (!state.mode || !state.instId) return;
+    if (state.mode === 'blendMap') { drawBlendMap(); return; }
+    const inst = getStack().find(i => i.id === state.instId);
+    if (inst) DRAW_FNS[state.mode]?.(inst.params);
+}
+
+let _roPending = false;
+const _overlayResizeObs = new ResizeObserver(() => {
+    if (_roPending) return;
+    _roPending = true;
+    // Coalesce bursts; the rAF callback runs after layout so getBoundingClientRect
+    // in syncSize returns the settled size.
+    requestAnimationFrame(() => { _roPending = false; redrawActiveOverlay(); });
+});
+_overlayResizeObs.observe(canvas);
 
 function onHover(e) {
     if (state.dragging) return;

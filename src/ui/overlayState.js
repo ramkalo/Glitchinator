@@ -1,7 +1,7 @@
 // Shared mutable state for the one active overlay at a time.
 // All overlay modules import this object and read/write its properties.
 export const state = {
-    mode:        null,   // 'fade' | 'crop' | 'viewport' | 'lineDrag' | 'chroma' | 'vignette' | 'barrelDistortion' | 'corrupted' | 'text' | 'doubleExposure' | 'shapeSticker' | 'matrixRain' | 'smearTwist' | null
+    mode:        null,   // 'fade' | 'crop' | 'viewport' | 'lineDrag' | 'chroma' | 'vignette' | 'barrelDistortion' | 'transform' | 'corrupted' | 'text' | 'doubleExposure' | 'shapeSticker' | 'matrixRain' | 'smearTwist' | null
     instId:      null,
     dragging:    false,
     xKey:        null,
