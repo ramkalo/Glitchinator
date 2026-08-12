@@ -1,12 +1,10 @@
 // Touch gesture handlers for the canvas area:
 //   • Pinch-to-zoom + 1-finger pan (persistent — shared viewport transform)
 //   • Long-press compare (hold to see original, release to restore)
-//   • Canvas-drag adjust (horizontal drag maps to active slider range)
 
 import { originalImage } from '../renderer/glstate.js';
 import { blitOriginalToScreen } from '../renderer/webgl.js';
-import { processImage } from '../renderer/pipeline.js';
-import { activeSlider, updatePillValue } from './bottomsheet.js';
+import { processImageImmediate } from '../renderer/pipeline.js';
 import { zoomAt, panBy, resetViewport, getScale, isZoomed } from './viewportZoom.js';
 
 const isMobile = () =>
@@ -19,6 +17,14 @@ export function initTouchGestures() {
     const wrapper     = document.getElementById('canvasWrapper');
     const overlayCanvas = document.getElementById('overlayCanvas');
     if (!wrapper) return;
+
+    // Long-press compare only arms when the drawer is retracted — never while
+    // the controls are pulled out (sheet-expanded) or a slider is soloed (sheet-hidden).
+    const sheetRetracted = () => {
+        const s = document.querySelector('.sidebar');
+        return !!s && !s.classList.contains('sheet-expanded')
+                  && !s.classList.contains('sheet-hidden');
+    };
 
     // ── Pinch state ─────────────────────────────────────────────────────
     let pinchPrevDist = 0;
@@ -39,10 +45,6 @@ export function initTouchGestures() {
     let longPressTimer  = null;
     let longPressActive = false;
     let lpStartX = 0, lpStartY = 0;
-
-    // ── Canvas-drag adjust state ─────────────────────────────────────────
-    let adjustStartX     = null;
-    let adjustStartValue = null;
 
     // ── Double-tap state ─────────────────────────────────────────────────
     let lastTapTime = 0;
@@ -65,29 +67,23 @@ export function initTouchGestures() {
         } else if (touches.length === 1) {
             const t = touches[0];
 
-            // ── Canvas-drag adjust start ──────────────────────────────
-            if (document.body.classList.contains('touch-adjust-active') && activeSlider) {
-                adjustStartX     = t.clientX;
-                adjustStartValue = parseFloat(activeSlider.value);
-                e.preventDefault();
-                return;
-            }
-
             // Track finger for pan + long-press.
             lpStartX = t.clientX;
             lpStartY = t.clientY;
 
-            // ── Long-press start ──────────────────────────────────────
-            longPressTimer = setTimeout(() => {
-                longPressActive = true;
-                if (!originalImage) return;
-                blitOriginalToScreen();
-                // Clear overlay so timestamp doesn't linger on original
-                if (overlayCanvas) {
-                    overlayCanvas.getContext('2d')
-                        .clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-                }
-            }, 600);
+            // ── Long-press start (compare) ────────────────────────────
+            if (sheetRetracted()) {
+                longPressTimer = setTimeout(() => {
+                    longPressActive = true;
+                    if (!originalImage) return;
+                    blitOriginalToScreen();
+                    // Clear overlay so timestamp doesn't linger on original
+                    if (overlayCanvas) {
+                        overlayCanvas.getContext('2d')
+                            .clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                    }
+                }, 600);
+            }
         }
     }, { passive: false });
 
@@ -119,23 +115,8 @@ export function initTouchGestures() {
                 if (moved > 8) clearLongPress();
             }
 
-            // ── Canvas-drag slider scrub ──────────────────────────────
-            if (document.body.classList.contains('touch-adjust-active')
-                    && activeSlider && adjustStartX !== null) {
-                const min   = parseFloat(activeSlider.min);
-                const max   = parseFloat(activeSlider.max);
-                const range = max - min;
-                const delta = (t.clientX - adjustStartX) / window.innerWidth * range;
-                const newVal = Math.min(max, Math.max(min, adjustStartValue + delta));
-
-                activeSlider.value = newVal;
-                activeSlider.dispatchEvent(new InputEvent('input', { bubbles: true }));
-                updatePillValue(newVal);
-                e.preventDefault();
-            }
-
             // ── 1-finger pan when zoomed in ───────────────────────────
-            if (!document.body.classList.contains('touch-adjust-active') && getScale() > 1) {
+            if (getScale() > 1) {
                 panBy(t.clientX - lpStartX, t.clientY - lpStartY);
                 lpStartX = t.clientX;
                 lpStartY = t.clientY;
@@ -148,10 +129,10 @@ export function initTouchGestures() {
     wrapper.addEventListener('touchend', (e) => {
         clearLongPress();
 
-        // Restore filtered image after long-press compare
+        // Restore filtered image after long-press compare (immediate, no debounce)
         if (longPressActive) {
             longPressActive = false;
-            processImage();
+            processImageImmediate();
         }
 
         // Double-tap → reset zoom
@@ -172,8 +153,6 @@ export function initTouchGestures() {
         if (e.touches.length < 2) {
             isPinching = false;
         }
-
-        adjustStartX = null;
     }, { passive: true });
 
     // ────────────────────────────────────────────────────────────────────

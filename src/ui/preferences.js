@@ -49,11 +49,14 @@ export function initPreferences() {
     applyPreferences();
 
     const modal = document.getElementById('prefsModal');
-    const openBtn = document.getElementById('prefsBtn');
     const closeBtn = document.getElementById('closePrefsBtn');
     const toggle = document.getElementById('uiSideToggle');
 
-    if (openBtn && modal) openBtn.addEventListener('click', () => modal.classList.remove('hidden'));
+    // Desktop header trigger + mobile toolbar trigger both open the modal.
+    ['prefsBtn', 'prefsBtnMobile'].forEach(id => {
+        const b = document.getElementById(id);
+        if (b && modal) b.addEventListener('click', () => modal.classList.remove('hidden'));
+    });
     if (closeBtn && modal) closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
     if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.add('hidden'); });
 

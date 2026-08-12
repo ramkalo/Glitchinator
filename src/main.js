@@ -154,13 +154,8 @@ document.getElementById('redoBtnMobile').addEventListener('click', function() {
     redo(noop, rebuildStackUI);
 });
 
-document.getElementById('loadPresetBtnMobile').addEventListener('click', function() {
-    document.getElementById('presetModal').classList.remove('hidden');
-    renderPresetList();
-});
-
-document.getElementById('savePresetBtnMobile').addEventListener('click', function() {
-    document.getElementById('presetModal').classList.remove('hidden');
+document.getElementById('loadCanvasBtnMobile').addEventListener('click', function() {
+    document.getElementById('canvasModal').classList.remove('hidden');
 });
 
 // ---------------------------------------------------------------------------
@@ -185,6 +180,12 @@ document.getElementById('loadZone').addEventListener('click', function() {
 document.getElementById('dropZoneBtn').addEventListener('click', function(e) {
     e.stopPropagation();
     document.getElementById('fileInput').click();
+});
+
+// Mobile empty page → open the Load Canvas modal (holds all blank-canvas presets)
+document.getElementById('dropZoneCanvasBtn').addEventListener('click', function(e) {
+    e.stopPropagation();
+    document.getElementById('canvasModal').classList.remove('hidden');
 });
 
 document.getElementById('blankWhite1080').addEventListener('click', function(e) { e.stopPropagation(); loadBlankCanvas(1920, 1080, '#ffffff'); });

@@ -66,6 +66,8 @@
                         <div class="drop-zone-text">Drop an image here or click Load Image</div>
                         <button class="btn btn-primary" id="dropZoneBtn">Load Image</button>
                     </div>
+                    <!-- Mobile-only: replaces the blank-canvas grid below -->
+                    <button class="btn drop-zone-canvas-btn" id="dropZoneCanvasBtn">Load Canvas</button>
                     <div class="blank-canvas-section">
                         <div class="blank-canvas-label">choose a blank canvas below</div>
                         <div class="btn-row drop-zone-blanks">
@@ -90,26 +92,22 @@
                         </div>
                     </div>
                 </div>
-                <!-- Floating pill shown during canvas-drag slider adjust -->
-                <div id="adjustPill" class="adjust-pill hidden">
-                    <span id="adjustPillLabel">—</span>: <span id="adjustPillValue">—</span>
+                <!-- Mobile solo-slider focus bar — one slider floats here while the rest of the UI hides -->
+                <div id="soloSliderBar" class="solo-slider-bar hidden">
+                    <div id="soloSliderHost" class="solo-slider-host"></div>
+                    <button id="soloDoneBtn" class="btn solo-done-btn" type="button">Done</button>
                 </div>
                 <!-- Reset-zoom button, shown only while the preview is zoomed/panned -->
                 <button id="resetZoomBtn" class="reset-zoom-btn hidden">Reset Zoom</button>
             </div>
 
             <aside class="sidebar">
-                <!-- Drag handle — tap to toggle sheet state on mobile -->
-                <div class="sheet-handle" id="sheetHandle">
-                    <div class="sheet-handle-bar"></div>
-                </div>
+                <!-- Show/Hide button — tap to pull the drawer out or retract it -->
+                <button class="sheet-handle" id="sheetHandle" type="button" aria-expanded="false">
+                    <span class="sheet-handle-label">&#9650; Controls</span>
+                </button>
 
                 <div class="sidebar-controls">
-                <div class="mobile-toolbar mobile-toolbar-top">
-                    <button class="btn" id="loadBtnMobile">Load Image</button>
-                    <button class="btn" id="loadPresetBtnMobile">Load Preset</button>
-                </div>
-
                 <!-- Effect Panel — tabbed: category libraries + current effects -->
                 <div id="stackPanel" class="panel-view panel-mode-current">
                     <div id="panelTabs" class="panel-tabs">
@@ -131,12 +129,14 @@
                 <input type="file" id="blendMapFileInput" accept="image/*" style="display:none;">
                 <input type="file" id="glassMapFileInput" accept="image/*" style="display:none;">
 
-                <div class="mobile-toolbar mobile-toolbar-bottom">
-                    <button class="btn btn-dim" id="revealBtnMobile" disabled>Metadata</button>
-                    <button class="btn" id="exportBtnMobile" disabled>Export</button>
+                <div class="mobile-toolbar mobile-toolbar-main">
+                    <button class="btn" id="prefsBtnMobile">&#9881; Preferences</button>
+                    <button class="btn" id="loadCanvasBtnMobile">Load Canvas</button>
+                    <button class="btn" id="loadBtnMobile">Load Image</button>
                     <button class="btn" id="undoBtnMobile" disabled>Undo</button>
                     <button class="btn" id="redoBtnMobile" disabled>Redo</button>
-                    <button class="btn" id="savePresetBtnMobile" disabled>Save Preset</button>
+                    <button class="btn btn-dim" id="revealBtnMobile" disabled>Metadata</button>
+                    <button class="btn" id="exportBtnMobile" disabled>Export</button>
                 </div>
                 </div><!-- end sidebar-controls -->
             </aside>

@@ -208,10 +208,14 @@ body {
     flex: 1;
 }
 
-.mobile-toolbar,
-.mobile-toolbar-top,
-.mobile-toolbar-bottom {
+.mobile-toolbar {
     display: none;
+}
+
+/* Solo-slider bar hidden by default on every viewport (no global .hidden rule
+   exists in this stylesheet — each .hidden is component-scoped). */
+.solo-slider-bar.hidden {
+    display: none !important;
 }
 
 .canvas-area {
@@ -223,6 +227,9 @@ body {
     background: var(--bg-dark);
     position: relative;
     min-height: 500px;
+    /* Clip the zoomed/panned preview to the canvas area instead of spilling
+       over the sidebar/header. */
+    overflow: hidden;
 }
 
 .canvas-wrapper {
@@ -262,11 +269,6 @@ body {
 
 /* Sheet handle hidden on desktop */
 .sheet-handle {
-    display: none;
-}
-
-/* Adjust pill hidden on desktop */
-.adjust-pill {
     display: none;
 }
 
@@ -338,6 +340,11 @@ body {
 .blank-canvas-label {
     font-size: 1rem;
     color: var(--text-dim);
+}
+
+/* Mobile-only Load Canvas button on the empty page (hidden on desktop) */
+.drop-zone-canvas-btn {
+    display: none;
 }
 
 .drop-zone-icon {
@@ -1216,12 +1223,12 @@ input[type="checkbox"].switch:checked::after {
         flex: 1;
         min-height: 0;
         padding: 0;
-        /* Reserve space so the image isn't hidden behind the peeking sheet */
-        padding-bottom: 17vh;
+        /* Reserve space so the image isn't hidden behind the retracted Show/Hide button */
+        padding-bottom: 56px;
     }
 
     #mainCanvas {
-        max-height: calc(83vh - 20px);
+        max-height: calc(100vh - 72px);
         margin: 0;
         padding: 0;
     }
@@ -1229,6 +1236,41 @@ input[type="checkbox"].switch:checked::after {
     /* Touch: disable browser scroll on canvas so our gesture handlers fire */
     .canvas-wrapper {
         touch-action: none;
+    }
+
+    /* No drag-and-drop on mobile — drop the dashed box, keep just the buttons */
+    .load-zone {
+        border: none;
+        padding: 0;
+    }
+
+    .drop-zone-icon,
+    .drop-zone-text {
+        display: none;
+    }
+
+    /* Compare is a tap-and-hold on the canvas here, so the button is redundant */
+    .compare-btn {
+        display: none;
+    }
+
+    /* Swap the blank-canvas grid for a single Load Canvas button (opens modal) */
+    .blank-canvas-section {
+        display: none;
+    }
+
+    .drop-zone-canvas-btn {
+        display: block;
+        margin-top: 12px;
+        padding: 12px 28px;
+        font-size: 0.9rem;
+    }
+
+    /* Canvas modal: let the presets wrap so none get cut off on narrow screens */
+    .drop-zone-blanks,
+    .drop-zone-blanks-portrait,
+    .drop-zone-blanks-square {
+        flex-wrap: wrap;
     }
 
     /* ── Bottom sheet ────────────────────────────────────────────────── */
@@ -1240,8 +1282,8 @@ input[type="checkbox"].switch:checked::after {
         right: 0;
         width: 100%;
         height: 90vh;
-        /* Default: peek — 17vh visible above bottom */
-        transform: translateY(calc(90vh - 17vh));
+        /* Default: retracted — only the 48px Show/Hide button peeks */
+        transform: translateY(calc(90vh - 48px));
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         border-radius: 0;
         border-top: none;
@@ -1258,43 +1300,77 @@ input[type="checkbox"].switch:checked::after {
         transform: translateY(0);
     }
 
-    /* Adjust mode: only the 50px handle peeks */
-    .sidebar.sheet-adjust {
-        transform: translateY(calc(90vh - 50px));
+    /* Solo focus mode: sheet fully off-screen so a single slider owns the bottom */
+    .sidebar.sheet-hidden {
+        transform: translateY(100%);
+    }
+
+    /* ── Solo-slider focus bar ───────────────────────────────────────────── */
+    .solo-slider-bar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 150;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        background: var(--bg-panel);
+        border-top: 1px solid var(--border);
+        padding: 14px 16px;
+        padding-bottom: max(14px, env(safe-area-inset-bottom, 14px));
+        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .solo-slider-host .control-group {
+        gap: 8px;
+    }
+
+    /* Make the label read as the tappable "exit" control while soloed */
+    .solo-slider-host .control-label {
+        cursor: pointer;
+        text-decoration: underline dotted var(--accent);
+    }
+
+    .solo-done-btn {
+        align-self: flex-end;
+    }
+
+    /* Canvas keeps clear of the pinned bar (tuned to bar height) */
+    body.slider-solo-active .canvas-area {
+        padding-bottom: 128px;
     }
 
     .sidebar-backdrop { display: none !important; }
     body.sidebar-open { overflow: hidden; }
 
-    /* ── Sheet handle ────────────────────────────────────────────────── */
+    /* ── Show/Hide button (full-width bar across the drawer's top edge) ── */
     .sheet-handle {
         flex-shrink: 0;
-        height: 50px;
+        width: 100%;
+        height: 48px;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        touch-action: none;
+        touch-action: manipulation;
         user-select: none;
         -webkit-user-select: none;
+        background: var(--bg-input);
+        color: var(--text);
+        border: none;
+        border-bottom: 1px solid var(--border);
+        font-family: inherit;
+        font-size: 0.85rem;
+        letter-spacing: 0.05em;
     }
 
-    /* Unhide adjust pill on mobile */
-    .adjust-pill {
-        display: block;
+    .sheet-handle:active {
+        background: var(--border);
     }
 
-    .sheet-handle-bar {
-        width: 40px;
-        height: 5px;
-        border-radius: 0;
-        background: rgba(255, 255, 255, 0.25);
-        transition: background 0.15s;
-    }
-
-    .sheet-handle:active .sheet-handle-bar,
-    .sheet-handle:hover .sheet-handle-bar {
-        background: rgba(255, 255, 255, 0.55);
+    .sheet-handle-label {
+        pointer-events: none;
     }
 
     /* Scrollable content area inside the sheet */
@@ -1310,35 +1386,12 @@ input[type="checkbox"].switch:checked::after {
         -webkit-overflow-scrolling: touch;
     }
 
-    /* ── Adjust pill ─────────────────────────────────────────────────── */
-    /* Floats at top of screen during canvas-drag slider adjust mode */
-    .adjust-pill {
-        position: fixed;
-        top: max(16px, env(safe-area-inset-top, 16px));
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(10, 10, 26, 0.92);
-        border: 1px solid #4ecca3;
-        color: #4ecca3;
-        padding: 8px 20px;
-        border-radius: 0;
-        font-family: 'JetBrains Mono', 'Courier New', monospace;
-        font-size: 14px;
-        pointer-events: none;
-        z-index: 200;
-        white-space: nowrap;
-        opacity: 1;
-        transition: opacity 0.2s;
-        backdrop-filter: blur(4px);
-    }
-
-    .adjust-pill.hidden {
-        opacity: 0;
-    }
-
-    /* Cursor hint when scrubbing */
-    body.touch-adjust-active .canvas-wrapper {
-        cursor: ew-resize;
+    /* Slider labels advertise the tap-to-focus affordance on mobile */
+    .slider-group .control-label {
+        cursor: pointer;
+        touch-action: manipulation;
+        padding: 6px 0;
+        text-decoration: underline dotted var(--text-dim);
     }
 
     .control-row {
@@ -1403,30 +1456,23 @@ input[type="checkbox"].switch:checked::after {
         width: 100%;
     }
 
-    .mobile-toolbar,
-    .mobile-toolbar-top,
-    .mobile-toolbar-bottom {
+    /* Single bottom toolbar — all desktop top-row actions, scrolls sideways */
+    .mobile-toolbar-main {
         display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
         gap: 8px;
-        padding: 12px 15px;
-        flex-wrap: wrap;
-    }
-
-    .mobile-toolbar-top {
-        border-bottom: 1px solid var(--border);
-    }
-
-    .mobile-toolbar-bottom {
-        border-top: 1px solid var(--border);
-    }
-
-    .mobile-toolbar .btn,
-    .mobile-toolbar-top .btn,
-    .mobile-toolbar-bottom .btn {
         padding: 10px 12px;
+        border-top: 1px solid var(--border);
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+    }
+
+    .mobile-toolbar-main .btn {
+        flex: 0 0 auto;
+        white-space: nowrap;
+        padding: 10px 14px;
         font-size: 0.8rem;
-        flex: 1;
-        min-width: 60px;
     }
 
     .image-info {
