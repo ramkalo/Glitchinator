@@ -171,7 +171,7 @@ export function renderStackList() {
 
     if (stack.length === 0) {
         container.innerHTML = '<div class="stack-empty">No effects added yet.<br>Pick a category tab above to add one.</div>';
-        updateExpandedEffectBar(null);
+        syncExpandedEffectBar();
         return;
     }
 
@@ -431,18 +431,20 @@ export function renderStackList() {
     else if (newEffect === 'qr')            showQROverlay(expandedInst);
     else if (newEffect === 'collage')       showCollageOverlay(expandedInst);
 
-    updateExpandedEffectBar(expandedInst);
+    syncExpandedEffectBar();
 }
 
 // Mobile: a thin bar above the Show/Hide handle naming the effect whose controls
 // are open in the (collapsed) drawer. CSS only shows it while the drawer is collapsed.
-function updateExpandedEffectBar(expandedInst) {
+// Reads live state so it's correct no matter who calls it (stack render, drawer toggle).
+export function syncExpandedEffectBar() {
     const bar = document.getElementById('expandedEffectBar');
     if (!bar) return;
+    const inst = getStack().find(i => i.id === _expandedId);
     const textEl = bar.querySelector('.expanded-effect-bar-text');
-    if (expandedInst) {
-        const entry = EFFECT_CATALOG.find(e => e.name === expandedInst.effectName);
-        const label = entry?.label ?? getEffect(expandedInst.effectName)?.label ?? expandedInst.effectName;
+    if (inst) {
+        const entry = EFFECT_CATALOG.find(e => e.name === inst.effectName);
+        const label = entry?.label ?? getEffect(inst.effectName)?.label ?? inst.effectName;
         if (textEl) textEl.textContent = `showing controls for ${label}`;
         bar.classList.remove('hidden');
     } else {

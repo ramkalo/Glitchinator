@@ -12,7 +12,7 @@
 // canvas), then hides the sheet so the image is unobstructed while editing.
 // Tapping the label again — or the Done button — puts everything back.
 
-import { renderStackList } from './stackPanel.js';
+import { renderStackList, syncExpandedEffectBar } from './stackPanel.js';
 
 const isMobile = () =>
     window.matchMedia('(max-width: 900px), (pointer: coarse)').matches ||
@@ -43,6 +43,8 @@ export function initBottomSheet() {
         if (labelEl) labelEl.textContent = expanded ? '▼ Hide' : '▲ Controls';
         // Mirror state onto <body> so the quick bar can hide while expanded.
         document.body.classList.toggle('drawer-expanded', expanded);
+        // Re-sync the "showing controls for X" hint to the true expanded state.
+        syncExpandedEffectBar();
     });
 
     // ── Slider label tap → enter/exit solo focus mode ───────────────────
