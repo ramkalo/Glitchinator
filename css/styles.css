@@ -1438,8 +1438,9 @@ input[type="checkbox"].switch:checked::after {
     
     input[type="range"] {
         min-width: 60px;
+        touch-action: none;   /* don't let vertical drift cancel the drag → no snap-back */
     }
-    
+
     input[type="number"], input[type="text"] {
         width: 70px;
         padding: 10px 8px;
@@ -1579,13 +1580,9 @@ input[type="checkbox"].switch:checked::after {
 }
 
 @media (max-width: 600px) {
-    .header {
-        display: flex;
-        flex-direction: column;
-        padding: 8px 12px;
-        gap: 8px;
-    }
-    
+    /* Header stays hidden on phones (kept off from the ≤900px block); it holds
+       only dead controls on mobile. */
+
     .logo {
         display: none;
     }
