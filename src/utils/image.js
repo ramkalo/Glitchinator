@@ -33,6 +33,7 @@ export function loadImage(file) {
             document.getElementById('savePresetBtn').disabled = false;
             document.getElementById('exportBtnMobile').disabled = false;
             document.getElementById('revealBtnMobile').disabled = false;
+            document.getElementById('compareBtnMobile').disabled = false;
 
             rescaleSecondImage();
             rescaleBlendMapImage();
@@ -83,6 +84,7 @@ export function loadBlankCanvas(width, height, color) {
     document.getElementById('savePresetBtn').disabled = false;
     document.getElementById('exportBtnMobile').disabled = false;
     document.getElementById('revealBtnMobile').disabled = false;
+    document.getElementById('compareBtnMobile').disabled = false;
 
     processImage();
     showNotification(`Blank ${color === '#ffffff' ? 'white' : 'black'} canvas loaded`);

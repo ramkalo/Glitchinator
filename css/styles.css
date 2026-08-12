@@ -54,6 +54,9 @@
     --success: #888888;
     --slider-track: #4a4a4a;
     --slider-fill: #6e6e6e;
+    /* Mobile quick-bar height (incl. home-indicator safe area). The fixed
+       Show/Hide handle sits directly on top of it. */
+    --qb-h: calc(52px + env(safe-area-inset-bottom, 0px));
 }
 
 body {
@@ -209,6 +212,11 @@ body {
 }
 
 .mobile-toolbar {
+    display: none;
+}
+
+/* Mobile quick bar hidden by default (shown only on mobile, drawer collapsed) */
+.mobile-quickbar {
     display: none;
 }
 
@@ -1223,14 +1231,26 @@ input[type="checkbox"].switch:checked::after {
         flex: 1;
         min-height: 0;
         padding: 0;
-        /* Reserve space so the image isn't hidden behind the retracted Show/Hide button */
-        padding-bottom: 56px;
+        /* Reserve space for the quick bar + the Show/Hide button (48px) */
+        padding-bottom: calc(var(--qb-h) + 48px);
     }
 
     #mainCanvas {
-        max-height: calc(100vh - 72px);
+        max-height: calc(100vh - var(--qb-h) - 64px);
         margin: 0;
         padding: 0;
+    }
+
+    /* Reset-zoom button lives top-left on mobile (clears the bottom quick bar) */
+    .reset-zoom-btn {
+        top: max(16px, env(safe-area-inset-top, 16px));
+        left: 16px;
+        bottom: auto;
+    }
+
+    /* Hide the desktop-only UI Side preference on mobile */
+    #uiSidePrefRow {
+        display: none;
     }
 
     /* Touch: disable browser scroll on canvas so our gesture handlers fire */
@@ -1282,9 +1302,12 @@ input[type="checkbox"].switch:checked::after {
         right: 0;
         width: 100%;
         height: 90vh;
-        /* Default: retracted — only the 48px Show/Hide button peeks */
-        transform: translateY(calc(90vh - 48px));
+        /* Default: fully retracted (the Show/Hide handle is a separate fixed
+           element, so the drawer itself just slides completely off-screen) */
+        transform: translateY(100%);
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        /* Keep the drawer's own bottom toolbar clear of the fixed handle */
+        padding-bottom: calc(var(--qb-h) + 48px);
         border-radius: 0;
         border-top: none;
         border-left: none;
@@ -1344,11 +1367,15 @@ input[type="checkbox"].switch:checked::after {
     .sidebar-backdrop { display: none !important; }
     body.sidebar-open { overflow: hidden; }
 
-    /* ── Show/Hide button (full-width bar across the drawer's top edge) ── */
+    /* ── Show/Hide button — FIXED just above the quick bar, so it never rides
+       the drawer's transform (moved out of .sidebar in the markup for this) ── */
     .sheet-handle {
-        flex-shrink: 0;
-        width: 100%;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: var(--qb-h);          /* sits directly on top of the quick bar */
         height: 48px;
+        z-index: 105;                 /* above the drawer (100) and quick bar (101) */
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1359,6 +1386,7 @@ input[type="checkbox"].switch:checked::after {
         background: var(--bg-input);
         color: var(--text);
         border: none;
+        border-top: 1px solid var(--border);
         border-bottom: 1px solid var(--border);
         font-family: inherit;
         font-size: 0.85rem;
@@ -1367,6 +1395,11 @@ input[type="checkbox"].switch:checked::after {
 
     .sheet-handle:active {
         background: var(--border);
+    }
+
+    /* Hidden while a slider is soloed (the solo bar has its own Done button) */
+    body.slider-solo-active .sheet-handle {
+        display: none;
     }
 
     .sheet-handle-label {
@@ -1456,23 +1489,82 @@ input[type="checkbox"].switch:checked::after {
         width: 100%;
     }
 
-    /* Single bottom toolbar — all desktop top-row actions, scrolls sideways */
+    /* Expanded-state bottom bar — fixed in the SAME spot as the quick bar,
+       four equal-width buttons, swapped in when the drawer is open */
     .mobile-toolbar-main {
-        display: flex;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 101;
+        box-sizing: border-box;
+        min-height: var(--qb-h);
+        display: none;                /* shown only via body.drawer-expanded below */
         flex-wrap: nowrap;
-        overflow-x: auto;
-        gap: 8px;
-        padding: 10px 12px;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 10px;
+        padding-bottom: max(8px, env(safe-area-inset-bottom, 8px));
+        background: var(--bg-panel);
         border-top: 1px solid var(--border);
-        -webkit-overflow-scrolling: touch;
-        overscroll-behavior-x: contain;
     }
 
     .mobile-toolbar-main .btn {
-        flex: 0 0 auto;
+        flex: 1 1 0;
+        min-width: 0;
         white-space: nowrap;
-        padding: 10px 14px;
-        font-size: 0.8rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        padding: 8px 4px;
+        font-size: 0.65rem;
+    }
+
+    /* Swap: quick bar when collapsed ↔ toolbar when expanded (neither while soloing) */
+    body.drawer-expanded .mobile-toolbar-main {
+        display: flex;
+    }
+    body.slider-solo-active .mobile-toolbar-main {
+        display: none;
+    }
+
+    /* ── Quick bar — pinned to the very bottom while the drawer is collapsed ── */
+    .mobile-quickbar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 101;                 /* above the retracted drawer (100) */
+        box-sizing: border-box;
+        min-height: var(--qb-h);      /* keeps its top edge flush under the handle */
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 10px;
+        padding-bottom: max(8px, env(safe-area-inset-bottom, 8px));
+        background: var(--bg-panel);
+        border-top: 1px solid var(--border);
+    }
+
+    /* Match the expanded toolbar's button size/style exactly */
+    .mobile-quickbar .btn {
+        flex: 1 1 0;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        padding: 8px 4px;
+        font-size: 0.65rem;
+    }
+
+    .mobile-quickbar .btn.active {
+        background: var(--accent);
+        color: #000;
+    }
+
+    /* Quick bar hides while the drawer is pulled out or a slider is soloed */
+    body.drawer-expanded .mobile-quickbar,
+    body.slider-solo-active .mobile-quickbar {
+        display: none;
     }
 
     .image-info {
@@ -1832,7 +1924,8 @@ input[type="checkbox"].switch:checked::after {
 }
 
 .panel-tab.active {
-    color: var(--accent);
+    background: var(--accent);
+    color: #000;
     border-bottom-color: var(--accent);
 }
 

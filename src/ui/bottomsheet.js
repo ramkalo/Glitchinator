@@ -41,6 +41,8 @@ export function initBottomSheet() {
         const expanded = sheetEl.classList.toggle('sheet-expanded');
         handleEl.setAttribute('aria-expanded', String(expanded));
         if (labelEl) labelEl.textContent = expanded ? '▼ Hide' : '▲ Controls';
+        // Mirror state onto <body> so the quick bar can hide while expanded.
+        document.body.classList.toggle('drawer-expanded', expanded);
     });
 
     // ── Slider label tap → enter/exit solo focus mode ───────────────────

@@ -30,7 +30,7 @@
             <button class="mobile-menu-toggle sidebar-toggle" id="sidebarToggle">&#9881;</button>
             <div class="toolbar">
                 <div class="toolbar-group">
-                    <button class="btn" id="prefsBtn" title="Preferences">&#9881; Preferences</button>
+                    <button class="btn" id="prefsBtn" title="Preferences">Preferences</button>
                     <button class="btn" id="loadCanvasBtn">Load Canvas</button>
                     <button class="btn" id="loadBtn">Load Image</button>
                 </div>
@@ -99,14 +99,29 @@
                 </div>
                 <!-- Reset-zoom button, shown only while the preview is zoomed/panned -->
                 <button id="resetZoomBtn" class="reset-zoom-btn hidden">Reset Zoom</button>
-            </div>
 
-            <aside class="sidebar">
-                <!-- Show/Hide button — tap to pull the drawer out or retract it -->
+                <!-- Show/Hide button — fixed above the quick bar; does NOT ride the
+                     drawer's transform (kept outside .sidebar on purpose) -->
                 <button class="sheet-handle" id="sheetHandle" type="button" aria-expanded="false">
                     <span class="sheet-handle-label">&#9650; Controls</span>
                 </button>
 
+                <!-- Mobile bottom bars — same fixed spot, swapped by drawer state -->
+                <div class="mobile-quickbar" id="mobileQuickbar">
+                    <button class="btn" id="revealBtnMobile" disabled>Metadata</button>
+                    <button class="btn" id="undoBtnMobile" disabled>Undo</button>
+                    <button class="btn" id="redoBtnMobile" disabled>Redo</button>
+                    <button class="btn" id="compareBtnMobile" disabled>Compare</button>
+                </div>
+                <div class="mobile-toolbar mobile-toolbar-main">
+                    <button class="btn" id="prefsBtnMobile">Preferences</button>
+                    <button class="btn" id="loadCanvasBtnMobile">Load Canvas</button>
+                    <button class="btn" id="loadBtnMobile">Load Image</button>
+                    <button class="btn" id="exportBtnMobile" disabled>Export</button>
+                </div>
+            </div>
+
+            <aside class="sidebar">
                 <div class="sidebar-controls">
                 <!-- Effect Panel — tabbed: category libraries + current effects -->
                 <div id="stackPanel" class="panel-view panel-mode-current">
@@ -128,16 +143,6 @@
                 <input type="file" id="secondFileInput" accept="image/*" style="display:none;">
                 <input type="file" id="blendMapFileInput" accept="image/*" style="display:none;">
                 <input type="file" id="glassMapFileInput" accept="image/*" style="display:none;">
-
-                <div class="mobile-toolbar mobile-toolbar-main">
-                    <button class="btn" id="prefsBtnMobile">&#9881; Preferences</button>
-                    <button class="btn" id="loadCanvasBtnMobile">Load Canvas</button>
-                    <button class="btn" id="loadBtnMobile">Load Image</button>
-                    <button class="btn" id="undoBtnMobile" disabled>Undo</button>
-                    <button class="btn" id="redoBtnMobile" disabled>Redo</button>
-                    <button class="btn btn-dim" id="revealBtnMobile" disabled>Metadata</button>
-                    <button class="btn" id="exportBtnMobile" disabled>Export</button>
-                </div>
                 </div><!-- end sidebar-controls -->
             </aside>
         </div>
@@ -148,7 +153,7 @@
     <div class="modal-overlay hidden" id="prefsModal">
         <div class="modal">
             <h2>Preferences</h2>
-            <div class="pref-row">
+            <div class="pref-row" id="uiSidePrefRow">
                 <span class="pref-label">UI Side</span>
                 <div class="pref-segmented" id="uiSideToggle" role="group" aria-label="UI Side">
                     <button class="pref-seg-btn" type="button" data-side="left">Left</button>

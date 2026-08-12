@@ -1,10 +1,8 @@
 // Touch gesture handlers for the canvas area:
 //   • Pinch-to-zoom + 1-finger pan (persistent — shared viewport transform)
-//   • Long-press compare (hold to see original, release to restore)
+//   • Double-tap to reset zoom
+// (Original-vs-edited compare is the Compare button in the mobile quick bar.)
 
-import { originalImage } from '../renderer/glstate.js';
-import { blitOriginalToScreen } from '../renderer/webgl.js';
-import { processImageImmediate } from '../renderer/pipeline.js';
 import { zoomAt, panBy, resetViewport, getScale, isZoomed } from './viewportZoom.js';
 
 const isMobile = () =>
@@ -14,17 +12,8 @@ const isMobile = () =>
 export function initTouchGestures() {
     if (!isMobile()) return;
 
-    const wrapper     = document.getElementById('canvasWrapper');
-    const overlayCanvas = document.getElementById('overlayCanvas');
+    const wrapper = document.getElementById('canvasWrapper');
     if (!wrapper) return;
-
-    // Long-press compare only arms when the drawer is retracted — never while
-    // the controls are pulled out (sheet-expanded) or a slider is soloed (sheet-hidden).
-    const sheetRetracted = () => {
-        const s = document.querySelector('.sidebar');
-        return !!s && !s.classList.contains('sheet-expanded')
-                  && !s.classList.contains('sheet-hidden');
-    };
 
     // ── Pinch state ─────────────────────────────────────────────────────
     let pinchPrevDist = 0;
@@ -41,10 +30,8 @@ export function initTouchGestures() {
         };
     }
 
-    // ── Long-press compare state ─────────────────────────────────────────
-    let longPressTimer  = null;
-    let longPressActive = false;
-    let lpStartX = 0, lpStartY = 0;
+    // ── 1-finger pan state ──────────────────────────────────────────────
+    let panPrevX = 0, panPrevY = 0;
 
     // ── Double-tap state ─────────────────────────────────────────────────
     let lastTapTime = 0;
@@ -57,7 +44,6 @@ export function initTouchGestures() {
         if (touches.length === 2) {
             // ── Pinch start ────────────────────────────────────────────
             isPinching = true;
-            clearLongPress();
             pinchPrevDist = touchDist(touches);
             const mid = touchMid(touches);
             pinchPrevMidX = mid.x;
@@ -66,24 +52,8 @@ export function initTouchGestures() {
 
         } else if (touches.length === 1) {
             const t = touches[0];
-
-            // Track finger for pan + long-press.
-            lpStartX = t.clientX;
-            lpStartY = t.clientY;
-
-            // ── Long-press start (compare) ────────────────────────────
-            if (sheetRetracted()) {
-                longPressTimer = setTimeout(() => {
-                    longPressActive = true;
-                    if (!originalImage) return;
-                    blitOriginalToScreen();
-                    // Clear overlay so timestamp doesn't linger on original
-                    if (overlayCanvas) {
-                        overlayCanvas.getContext('2d')
-                            .clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-                    }
-                }, 600);
-            }
+            panPrevX = t.clientX;
+            panPrevY = t.clientY;
         }
     }, { passive: false });
 
@@ -109,17 +79,11 @@ export function initTouchGestures() {
         } else if (touches.length === 1) {
             const t = touches[0];
 
-            // Cancel long press if finger moved
-            if (longPressTimer) {
-                const moved = Math.hypot(t.clientX - lpStartX, t.clientY - lpStartY);
-                if (moved > 8) clearLongPress();
-            }
-
             // ── 1-finger pan when zoomed in ───────────────────────────
             if (getScale() > 1) {
-                panBy(t.clientX - lpStartX, t.clientY - lpStartY);
-                lpStartX = t.clientX;
-                lpStartY = t.clientY;
+                panBy(t.clientX - panPrevX, t.clientY - panPrevY);
+                panPrevX = t.clientX;
+                panPrevY = t.clientY;
                 e.preventDefault();
             }
         }
@@ -127,14 +91,6 @@ export function initTouchGestures() {
 
     // ────────────────────────────────────────────────────────────────────
     wrapper.addEventListener('touchend', (e) => {
-        clearLongPress();
-
-        // Restore filtered image after long-press compare (immediate, no debounce)
-        if (longPressActive) {
-            longPressActive = false;
-            processImageImmediate();
-        }
-
         // Double-tap → reset zoom
         if (e.changedTouches.length === 1 && e.touches.length === 0) {
             const t   = e.changedTouches[0];
@@ -154,10 +110,4 @@ export function initTouchGestures() {
             isPinching = false;
         }
     }, { passive: true });
-
-    // ────────────────────────────────────────────────────────────────────
-    function clearLongPress() {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
-    }
 }

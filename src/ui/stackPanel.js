@@ -13,7 +13,22 @@ let _expandedId = null;
 export function initStackPanel() {
     initTabs();
     initCompareButton();
+    initMobileCompareButton();
     renderStackList();
+}
+
+// Mobile quick-bar Compare: tap to show the original, tap again to restore.
+function initMobileCompareButton() {
+    const btn = document.getElementById('compareBtnMobile');
+    if (!btn) return;
+    let comparing = false;
+    btn.addEventListener('click', () => {
+        if (!originalImage) return;
+        comparing = !comparing;
+        btn.classList.toggle('active', comparing);
+        if (comparing) blitOriginalToScreen();
+        else processImageImmediate();
+    });
 }
 
 function initCompareButton() {
