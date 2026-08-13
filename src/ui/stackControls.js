@@ -356,6 +356,15 @@ function _placeRandomNodes(inst) {
 // A live warning banner for the QR effect — surfaces capacity/generation problems so a code never
 // fails or drops data silently. qrEngine dispatches a 'qr-status' event when async generation
 // finishes; the banner refreshes then (and self-detaches once its element leaves the DOM).
+function buildPaletteInfo() {
+    const box = document.createElement('div');
+    box.className = 'control-group palette-info';
+    box.style.cssText = 'border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text-dim);font-size:0.72rem;line-height:1.4;';
+    box.textContent =
+        'Effects read colors from the nearest enabled Color Palette above them in the stack, so this palette only affects effects placed below it. Adding a palette-aware effect (Color Remap, Text, Mesh, Halftone, and more) auto-adds a Color Palette when the stack has none. Edit a swatch and every dependent effect updates live.';
+    return box;
+}
+
 function buildQrWarning(inst) {
     const box = document.createElement('div');
     box.className = 'control-group qr-warning';
@@ -498,6 +507,10 @@ export function buildEffectBody(inst, onRebuild) {
 
     if (inst.effectName === 'qr') {
         content.insertBefore(buildQrWarning(inst), content.firstChild);   // top of the card, above the text field
+    }
+
+    if (inst.effectName === 'colorPalette') {
+        content.insertBefore(buildPaletteInfo(), content.firstChild);   // explainer at the very top of the card
     }
 
     if (inst.effectName === 'cut') {
@@ -717,7 +730,7 @@ export function buildEffectBody(inst, onRebuild) {
         // handler (rebuilding this whole body), which swaps the x-axis / histogram
         // and, for non-'value' modes, hides the channel selector. Just inject the
         // curve canvas after the histogram toggle.
-        const anchor = content.querySelector('[data-inst-param="curveShowHistogram"]')?.closest('.control-group');
+        const anchor = content.querySelector('[data-inst-param="curveShowHistogram"]')?.closest('.control-group, .checkbox-label');
         const editor = buildCurveEditorControl(inst, { onRebuild });
         if (anchor) anchor.after(editor);
         else content.appendChild(editor);
@@ -845,12 +858,18 @@ export function buildEffectBody(inst, onRebuild) {
     }
 
     if (inst.effectName === 'text') {
-        // textColor is now a swatch strip; picking a swatch rebuilds the panel
-        // (onRebuild), so reflect the noise-randomize button from the param value.
-        const randomizeGroup  = content.querySelector('[data-key="textNoiseRandomize"]');
-        const noiseValues     = new Set(['greyNoise', 'colorNoise', 'paletteNoise']);
+        // The swatch strips rebuild the panel on pick (onRebuild), so derive
+        // visibility straight from the current param values.
+        const noiseValues = new Set(['greyNoise', 'colorNoise', 'paletteNoise']);
+        // Noise-randomize button: only when the text color is a noise type.
+        const randomizeGroup = content.querySelector('[data-key="textNoiseRandomize"]');
         if (randomizeGroup) {
             randomizeGroup.style.display = noiseValues.has(inst.params.textColor) ? '' : 'none';
+        }
+        // BG grain size: only when the background palette needs a grain (noise types).
+        const grainGroup = content.querySelector('[data-inst-param="textBgGrainSize"]')?.closest('.control-group');
+        if (grainGroup) {
+            grainGroup.style.display = noiseValues.has(inst.params.textBg) ? '' : 'none';
         }
     }
 
@@ -1259,19 +1278,29 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
 
         const pullBtn = document.createElement('button');
         pullBtn.className = 'btn';
-        pullBtn.textContent = label;
+        pullBtn.textContent = 'Pull Color';
+        pullBtn.style.cssText = 'flex:0 0 auto;white-space:nowrap;';
         pullBtn.addEventListener('click', () => {
-            const result = getPixelsBeforeInstance(getStack(), inst.id);
-            if (!result) return;
             const mode = inst.params.paletteFromImageMode ?? 'whole';
-            const targetBox = {
-                x: inst.params.paletteTargetX ?? 0.3,
-                y: inst.params.paletteTargetY ?? 0.3,
-                w: inst.params.paletteTargetW ?? 0.4,
-                h: inst.params.paletteTargetH ?? 0.4,
-            };
-            const samples = _collectSamples(result.pixels, result.width, result.height, mode, targetBox);
-            const colors = _pickDiverseColors(samples);
+            let colors;
+            if (mode === 'external') {
+                // Sample the separately loaded reference image (whole).
+                const offscreen = _paletteImages.get(inst.id);
+                if (!offscreen) return;
+                const imgData = offscreen.getContext('2d').getImageData(0, 0, offscreen.width, offscreen.height);
+                colors = _pickDiverseColors(_collectSamples(imgData.data, offscreen.width, offscreen.height, 'whole', null));
+            } else {
+                // Sample the image reaching this instance in the stack.
+                const result = getPixelsBeforeInstance(getStack(), inst.id);
+                if (!result) return;
+                const targetBox = {
+                    x: inst.params.paletteTargetX ?? 0.3,
+                    y: inst.params.paletteTargetY ?? 0.3,
+                    w: inst.params.paletteTargetW ?? 0.4,
+                    h: inst.params.paletteTargetH ?? 0.4,
+                };
+                colors = _pickDiverseColors(_collectSamples(result.pixels, result.width, result.height, mode, targetBox));
+            }
             saveState();
             setInstanceParam(inst.id, 'palettePreset', 'custom');
             for (let i = 0; i < 8; i++) {
@@ -1283,12 +1312,12 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         const fromLabel = document.createElement('span');
         fromLabel.className = 'control-label';
         fromLabel.textContent = 'From';
-        fromLabel.style.flex = '0 0 auto';
+        fromLabel.style.cssText = 'flex:0 0 auto;min-width:0;';
 
         const modeSel = document.createElement('select');
         modeSel.className = 'select-input';
-        modeSel.style.flex = '1';
-        [['whole', 'Whole Image'], ['perimeter', 'Perimeter'], ['center', 'Center'], ['target', 'Target']].forEach(([val, lbl]) => {
+        modeSel.style.cssText = 'flex:1 1 0;min-width:0;';
+        [['whole', 'Whole Image'], ['perimeter', 'Perimeter'], ['center', 'Center'], ['target', 'Target'], ['external', 'External Image']].forEach(([val, lbl]) => {
             const opt = document.createElement('option');
             opt.value = val;
             opt.textContent = lbl;
@@ -1303,12 +1332,52 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
                 overlayToken = null;
                 _hideTargetOverlay(inst.id);
             }
+            loadRow.style.display = modeSel.value === 'external' ? '' : 'none';
         });
 
         row.appendChild(pullBtn);
         row.appendChild(fromLabel);
         row.appendChild(modeSel);
         group.appendChild(row);
+
+        // External-image source: a load button + filename, shown only in 'external' mode.
+        const loadRow = document.createElement('div');
+        loadRow.className = 'control-row';
+        loadRow.style.cssText = 'gap:6px;margin-top:6px;';
+        loadRow.style.display = (inst.params.paletteFromImageMode ?? 'whole') === 'external' ? '' : 'none';
+
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        fileInput.style.display = 'none';
+
+        const loadBtn = document.createElement('button');
+        loadBtn.className = 'btn';
+        loadBtn.textContent = 'Load Palette Image';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.style.cssText = 'font-size:0.7rem;font-family:monospace;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;';
+        const storedImg = _paletteImages.get(inst.id);
+        nameSpan.textContent = storedImg ? (storedImg._filename ?? 'loaded') : '';
+
+        fileInput.addEventListener('change', () => {
+            const file = fileInput.files?.[0];
+            if (!file) return;
+            createImageBitmap(file).then(bitmap => {
+                const offscreen = new OffscreenCanvas(bitmap.width, bitmap.height);
+                offscreen.getContext('2d').drawImage(bitmap, 0, 0);
+                offscreen._filename = file.name;
+                _paletteImages.set(inst.id, offscreen);
+                nameSpan.textContent = file.name;
+                bitmap.close();
+            });
+        });
+        loadBtn.addEventListener('click', () => fileInput.click());
+
+        loadRow.appendChild(fileInput);
+        loadRow.appendChild(loadBtn);
+        loadRow.appendChild(nameSpan);
+        group.appendChild(loadRow);
 
         // Show overlay if already in target mode when control is built
         let overlayToken = null;
@@ -1430,14 +1499,24 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         group.dataset.key = 'paletteCopyHex';
         const row = document.createElement('div');
         row.className = 'control-row';
+        row.style.gap = '6px';
+        const copyHex = (strip) => Array.from({ length: 8 }, (_, i) => {
+            const h = inst.params[`palette${i}`] ?? '';
+            return strip ? h.replace(/^#/, '') : h;
+        }).join(' ');
+
         const copyBtn = document.createElement('button');
         copyBtn.className = 'btn';
         copyBtn.textContent = 'Copy Hex';
-        copyBtn.addEventListener('click', () => {
-            const hex = Array.from({ length: 8 }, (_, i) => inst.params[`palette${i}`] ?? '').join(' ');
-            navigator.clipboard.writeText(hex);
-        });
+        copyBtn.addEventListener('click', () => navigator.clipboard.writeText(copyHex(false)));
+
+        const copyNoHashBtn = document.createElement('button');
+        copyNoHashBtn.className = 'btn';
+        copyNoHashBtn.textContent = 'Copy Hex without #';
+        copyNoHashBtn.addEventListener('click', () => navigator.clipboard.writeText(copyHex(true)));
+
         row.appendChild(copyBtn);
+        row.appendChild(copyNoHashBtn);
         group.appendChild(row);
         return group;
     }
@@ -1479,77 +1558,6 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
     }
 
     // Load a reference image for palette sampling
-    if (key === 'paletteLoadImage') {
-        const group = document.createElement('div');
-        group.className = 'control-group';
-        group.dataset.key = 'paletteLoadImage';
-        const row = document.createElement('div');
-        row.className = 'control-row';
-        row.style.gap = '6px';
-
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = 'image/*';
-        fileInput.style.display = 'none';
-
-        const loadBtn = document.createElement('button');
-        loadBtn.className = 'btn';
-        loadBtn.textContent = label;
-
-        const nameSpan = document.createElement('span');
-        nameSpan.style.cssText = 'font-size:0.7rem;font-family:monospace;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;';
-        const stored = _paletteImages.get(inst.id);
-        nameSpan.textContent = stored ? (stored._filename ?? 'loaded') : '';
-
-        fileInput.addEventListener('change', () => {
-            const file = fileInput.files?.[0];
-            if (!file) return;
-            createImageBitmap(file).then(bitmap => {
-                const offscreen = new OffscreenCanvas(bitmap.width, bitmap.height);
-                offscreen.getContext('2d').drawImage(bitmap, 0, 0);
-                offscreen._filename = file.name;
-                _paletteImages.set(inst.id, offscreen);
-                nameSpan.textContent = file.name;
-                bitmap.close();
-            });
-        });
-
-        loadBtn.addEventListener('click', () => fileInput.click());
-        row.appendChild(fileInput);
-        row.appendChild(loadBtn);
-        row.appendChild(nameSpan);
-        group.appendChild(row);
-        return group;
-    }
-
-    // Sample palette colors from the loaded reference image
-    if (key === 'palettePullFromImage') {
-        const group = document.createElement('div');
-        group.className = 'control-group';
-        group.dataset.key = 'palettePullFromImage';
-        const row = document.createElement('div');
-        row.className = 'control-row';
-        const pullBtn = document.createElement('button');
-        pullBtn.className = 'btn';
-        pullBtn.textContent = label;
-        pullBtn.addEventListener('click', () => {
-            const offscreen = _paletteImages.get(inst.id);
-            if (!offscreen) return;
-            const ctx2d = offscreen.getContext('2d');
-            const imgData = ctx2d.getImageData(0, 0, offscreen.width, offscreen.height);
-            const colors = _pickDiverseColors(_collectSamples(imgData.data, offscreen.width, offscreen.height, 'whole', null));
-            saveState();
-            setInstanceParam(inst.id, 'palettePreset', 'custom');
-            for (let i = 0; i < 8; i++) {
-                setInstanceParam(inst.id, `palette${i}`, colors[i]);
-            }
-            if (onRebuild) onRebuild();
-        });
-        row.appendChild(pullBtn);
-        group.appendChild(row);
-        return group;
-    }
-
     // Action button — schema.button names the param to randomize when clicked
     if (schema.button) {
         const group = document.createElement('div');
@@ -1596,32 +1604,7 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         return group;
     }
 
-    // Reset Box button for text effect
-    if (key === 'textBoxReset') {
-        const group = document.createElement('div');
-        group.className = 'control-group';
-        const row = document.createElement('div');
-        row.className = 'control-row';
-        const btn = document.createElement('button');
-        btn.className = 'btn';
-        btn.textContent = label;
-        btn.addEventListener('click', () => {
-            saveState();
-            setInstanceParam(inst.id, 'textTLx', 10);
-            setInstanceParam(inst.id, 'textTLy', 65);
-            setInstanceParam(inst.id, 'textTRx', 90);
-            setInstanceParam(inst.id, 'textTRy', 65);
-            setInstanceParam(inst.id, 'textBRx', 90);
-            setInstanceParam(inst.id, 'textBRy', 95);
-            setInstanceParam(inst.id, 'textBLx', 10);
-            setInstanceParam(inst.id, 'textBLy', 95);
-        });
-        row.appendChild(btn);
-        group.appendChild(row);
-        return group;
-    }
-
-    // Right Angles + the angle lock toggle, sharing one row
+    // Snap to Grid + Reset Angles + Lock Angles, sharing one row (text buttons).
     if (key === 'textBoxRightAngles') {
         const group = document.createElement('div');
         group.className = 'control-group';
@@ -1629,44 +1612,17 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         row.className = 'control-row';
         row.style.gap = '6px';
 
-        const btn = document.createElement('button');
-        btn.className = 'btn';
-        btn.textContent = label;
-        btn.title = 'Square up the box, keeping its center and rotation';
-        btn.addEventListener('click', () => {
-            saveState();
-            const update = rightAngleCorners(inst.params, canvas.width, canvas.height);
-            for (const [k, v] of Object.entries(update)) setInstanceParam(inst.id, k, v);
-        });
-
-        const lockBtn = document.createElement('button');
-        lockBtn.className = 'btn btn-sm';
-        lockBtn.style.cssText = 'padding:2px 8px;flex-shrink:0;';
-        const paintLock = () => {
-            const locked = !!inst.params.textBoxLockAngles;
-            lockBtn.textContent = locked ? '🔒' : '🔓';
-            lockBtn.title = locked
-                ? 'Angles locked — resizing only changes side lengths'
-                : 'Angles unlocked — corners move freely';
-            lockBtn.style.opacity = locked ? '1' : '0.6';
-        };
-        lockBtn.addEventListener('click', () => {
-            saveState();
-            setInstanceParam(inst.id, 'textBoxLockAngles', !inst.params.textBoxLockAngles);
-            paintLock();
-        });
-        paintLock();
+        const BOX_BTN_CSS = 'padding:2px 8px;font-size:0.7rem;flex:0 0 auto;';
 
         const snapBtn = document.createElement('button');
         snapBtn.className = 'btn btn-sm';
-        snapBtn.style.cssText = 'padding:2px 8px;flex-shrink:0;';
-        snapBtn.textContent = '▦';
+        snapBtn.style.cssText = BOX_BTN_CSS;
+        snapBtn.textContent = 'Snap To Grid';
         const paintSnap = () => {
             const on = !!inst.params.textBoxSnap;
             snapBtn.title = on
                 ? 'Snap to grid on — edges/center align to thirds + center lines while dragging'
                 : 'Snap to grid off — box moves freely';
-            snapBtn.style.opacity = on ? '1' : '0.6';
             snapBtn.classList.toggle('btn-primary', on);
         };
         snapBtn.addEventListener('click', () => {
@@ -1676,12 +1632,133 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         });
         paintSnap();
 
-        row.appendChild(btn);
-        row.appendChild(lockBtn);
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-sm';
+        btn.style.cssText = BOX_BTN_CSS;
+        btn.textContent = label; // 'Reset Angles'
+        btn.title = 'Square up the box, keeping its center and rotation';
+        btn.addEventListener('click', () => {
+            saveState();
+            const update = rightAngleCorners(inst.params, canvas.width, canvas.height);
+            for (const [k, v] of Object.entries(update)) setInstanceParam(inst.id, k, v);
+        });
+
+        const lockBtn = document.createElement('button');
+        lockBtn.className = 'btn btn-sm';
+        lockBtn.style.cssText = BOX_BTN_CSS;
+        lockBtn.textContent = 'Lock Angles';
+        const paintLock = () => {
+            const locked = !!inst.params.textBoxLockAngles;
+            lockBtn.title = locked
+                ? 'Angles locked — resizing only changes side lengths'
+                : 'Angles unlocked — corners move freely';
+            lockBtn.classList.toggle('btn-primary', locked);
+        };
+        lockBtn.addEventListener('click', () => {
+            saveState();
+            setInstanceParam(inst.id, 'textBoxLockAngles', !inst.params.textBoxLockAngles);
+            paintLock();
+        });
+        paintLock();
+
         row.appendChild(snapBtn);
+        row.appendChild(lockBtn);
+        row.appendChild(btn);
         group.appendChild(row);
         return group;
     }
+
+    // Text alignment (Justify) → a row of standard align icon buttons.
+    if (key === 'textAlign') {
+        const group = document.createElement('div');
+        group.className = 'control-group';
+        const row = document.createElement('div');
+        row.className = 'control-row';
+        row.style.gap = '6px';
+
+        const labelEl = document.createElement('span');
+        labelEl.className = 'control-label';
+        labelEl.textContent = label;
+
+        const btnRow = document.createElement('div');
+        btnRow.style.cssText = 'display:flex;gap:4px;';
+
+        const alignIcon = (kind) => {
+            const widths = kind === 'justify' ? [12, 12, 12, 12] : [12, 7, 10, 6];
+            const ys = [2.5, 6, 9.5, 13];
+            let lines = '';
+            for (let i = 0; i < 4; i++) {
+                const w = widths[i];
+                const x = kind === 'center' ? (16 - w) / 2 : kind === 'right' ? 14 - w : 2;
+                lines += `<rect x="${x}" y="${ys[i]}" width="${w}" height="1.4" rx="0.6" fill="currentColor"/>`;
+            }
+            return `<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">${lines}</svg>`;
+        };
+
+        const buttons = [];
+        const paintAlign = () => {
+            for (const b of buttons) b.classList.toggle('btn-primary', b.dataset.val === inst.params.textAlign);
+        };
+        for (const [val, text] of schema.options) {
+            const b = document.createElement('button');
+            b.className = 'btn';
+            b.style.cssText = 'padding:4px 8px;display:flex;align-items:center;';
+            b.dataset.val = val;
+            b.title = text;
+            b.innerHTML = alignIcon(val);
+            b.addEventListener('click', () => {
+                saveState();
+                setInstanceParam(inst.id, 'textAlign', val);
+                paintAlign();
+            });
+            buttons.push(b);
+            btnRow.appendChild(b);
+        }
+        paintAlign();
+
+        row.appendChild(labelEl);
+        row.appendChild(btnRow);
+        group.appendChild(row);
+        return group;
+    }
+
+    // Bold / Italic / Strikethrough → a row of toggle buttons.
+    if (key === 'textBold') {
+        const group = document.createElement('div');
+        group.className = 'control-group';
+        const row = document.createElement('div');
+        row.className = 'control-row';
+        row.style.gap = '6px';
+
+        const styles = [
+            ['textBold',      '<span style="font-weight:800;">B</span>',               'Bold'],
+            ['textItalic',    '<span style="font-style:italic;">I</span>',             'Italic'],
+            ['textUnderline', '<span style="text-decoration:underline;">U</span>',     'Underline'],
+            ['textStrike',    '<span style="text-decoration:line-through;">S</span>',  'Strikethrough'],
+            ['textReverse',   'Reverse',                                               'Reverse'],
+            ['textFlip',      'Flip',                                                  'Flip'],
+        ];
+        for (const [pk, html, title] of styles) {
+            const b = document.createElement('button');
+            b.className = 'btn';
+            b.style.cssText = 'min-width:36px;';
+            b.innerHTML = html;
+            b.title = title;
+            const paint = () => b.classList.toggle('btn-primary', !!inst.params[pk]);
+            b.addEventListener('click', () => {
+                saveState();
+                setInstanceParam(inst.id, pk, !inst.params[pk]);
+                paint();
+            });
+            paint();
+            row.appendChild(b);
+        }
+        group.appendChild(row);
+        return group;
+    }
+    // rendered by the textBold style row above
+    if (key === 'textItalic' || key === 'textStrike' || key === 'textReverse'
+        || key === 'textUnderline' || key === 'textFlip') return null;
 
     // Noise randomize button for text effect
     if (key === 'textNoiseRandomize') {
@@ -1877,10 +1954,15 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
     if (key === 'matrixRainText' || key === 'text' || schema.type === 'text') {
         const group = document.createElement('div');
         group.className = 'control-group';
-        const labelEl = document.createElement('div');
-        labelEl.className = 'control-section-header';
-        labelEl.style.cssText = 'font-size:0.75rem;margin-bottom:2px;';
-        labelEl.textContent = label;
+        // The text effect's content field sits under the 'Text' section header, so its
+        // own label would just repeat it — skip the label there.
+        if (key !== 'text') {
+            const labelEl = document.createElement('div');
+            labelEl.className = 'control-section-header';
+            labelEl.style.cssText = 'font-size:0.75rem;margin-bottom:2px;';
+            labelEl.textContent = label;
+            group.appendChild(labelEl);
+        }
         const textarea = document.createElement('textarea');
         textarea.value = currentVal;
         textarea.rows = 4;
@@ -1890,22 +1972,7 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         textarea.addEventListener('input', () => {
             setInstanceParam(inst.id, key, textarea.value);
         });
-        group.appendChild(labelEl);
         group.appendChild(textarea);
-        if (key === 'text') {
-            const tsBtn = document.createElement('button');
-            tsBtn.className = 'btn';
-            tsBtn.textContent = 'Timestamp';
-            tsBtn.style.cssText = 'padding:2px 8px;font-size:0.7rem;margin-top:4px;width:fit-content;';
-            tsBtn.addEventListener('click', () => {
-                const now = new Date();
-                const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-                const ts = `${months[now.getMonth()]} ${String(now.getDate()).padStart(2,'0')} ${now.getFullYear()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
-                setInstanceParam(inst.id, key, ts);
-                textarea.value = ts;
-            });
-            group.appendChild(tsBtn);
-        }
         return group;
     }
 

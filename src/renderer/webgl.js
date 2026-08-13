@@ -639,6 +639,18 @@ export function getPixelsBeforeInstance(stack, instId) {
     if (idx === -1) return null;
     const preStack = stack.slice(0, idx);
 
+    // Reset the shared canvas + fboPool to the original image size BEFORE sampling, exactly
+    // as processWebGLStack does. _runLinear computes each transform's output from the current
+    // fboPool size; without this it would feed crop (whose output is proportional to its
+    // input) the already-cropped size from the last render, double-cropping the sample.
+    const rw = originalImage.width, rh = originalImage.height;
+    if (canvas.width !== rw || canvas.height !== rh) {
+        canvas.width  = rw;
+        canvas.height = rh;
+        gl.viewport(0, 0, rw, rh);
+    }
+    if (fboPool[0].width !== rw || fboPool[0].height !== rh) reallocFBOs(rw, rh);
+
     const { tex: srcTex } = _runLinear(preStack, _origTex);
 
     const w = fboPool[0].width;
@@ -651,18 +663,11 @@ export function getPixelsBeforeInstance(stack, instId) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     destroyFBO(tempFBO);
 
-    // _runLinear resizes the shared canvas + fboPool whenever the sampled slice contains a
-    // size-changing transform (crop/rotate). Reset them to the original image size so the
-    // live preview isn't left shrunken — mirrors _precomputeInternalTextures' reset. Without
-    // this the preview squishes (permanently, for read-only callers like the curve histogram
-    // that fire no re-render; a flicker for callers that do).
-    const rw = originalImage.width, rh = originalImage.height;
-    if (canvas.width !== rw || canvas.height !== rh) {
-        canvas.width  = rw;
-        canvas.height = rh;
-        gl.viewport(0, 0, rw, rh);
-    }
-    if (!fboPool[0] || fboPool[0].width !== rw || fboPool[0].height !== rh) reallocFBOs(rw, rh);
+    // Sampling above resized/cleared the shared canvas + fboPool, so repaint the live preview
+    // by re-running the full stack. processWebGLStack does a full reset + render + screen blit
+    // and does NOT fire onStackChange, so there's no re-entrancy. The pixels/w/h returned were
+    // captured before this, so the sample is unaffected.
+    processWebGLStack(stack);
 
     return { pixels, width: w, height: h };
 }

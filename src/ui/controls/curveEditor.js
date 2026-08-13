@@ -2,7 +2,7 @@
 //
 // A draggable-node curve over a live histogram backdrop. Click empty space to add
 // a node, drag to move (endpoints are x-pinned, interior nodes clamp between their
-// neighbors), double-click or drag a node off the top/bottom to remove it. The
+// neighbors), double-click a node to remove it. The
 // smooth line is the exact monotone-cubic LUT the shader applies (shared code), so
 // what you draw is what you get. The x-axis meaning follows the mode/channel: value
 // or per-channel input for Value mode, luma for Luma vs Sat, hue for the hue modes.
@@ -207,7 +207,7 @@ export function buildCurveEditorControl(inst, { onRebuild } = {}) {
         return { px, py, nx: (px - PAD) / (W - 2 * PAD), ny: 1 - (py - PAD) / (H - 2 * PAD) };
     };
 
-    let drag = null; // { nodes, index, isEnd, removable }
+    let drag = null; // { nodes, index, isEnd }
 
     canvas.addEventListener('pointerdown', (e) => {
         e.preventDefault();
@@ -225,7 +225,7 @@ export function buildCurveEditorControl(inst, { onRebuild } = {}) {
         saveState();
 
         if (hit >= 0) {
-            drag = { nodes, index: hit, isEnd: hit === 0 || hit === nodes.length - 1, removable: false };
+            drag = { nodes, index: hit, isEnd: hit === 0 || hit === nodes.length - 1 };
         } else {
             if (nodes.length >= MAX_NODES) { drag = null; return; }
             const cx = clamp01(nx), cy = clamp01(ny);
@@ -234,7 +234,7 @@ export function buildCurveEditorControl(inst, { onRebuild } = {}) {
             if (idx > nodes.length - 1) idx = nodes.length - 1; // never after the last endpoint
             nodes.splice(idx, 0, { x: cx, y: cy });
             commit(nodes);
-            drag = { nodes, index: idx, isEnd: false, removable: false };
+            drag = { nodes, index: idx, isEnd: false };
         }
         repaint();
     });
@@ -249,18 +249,12 @@ export function buildCurveEditorControl(inst, { onRebuild } = {}) {
             const lo = nodes[i - 1].x + EPS, hi = nodes[i + 1].x - EPS;
             nodes[i].x = Math.min(Math.max(nx, lo), Math.max(lo, hi));
             nodes[i].y = clamp01(ny);
-            drag.removable = (ny < -0.2 || ny > 1.2) && nodes.length > 2;
         }
         commit(nodes);
         repaint();
     });
 
     const endDrag = () => {
-        if (drag && drag.removable && !drag.isEnd && drag.nodes.length > 2) {
-            drag.nodes.splice(drag.index, 1);
-            commit(drag.nodes);
-            repaint();
-        }
         drag = null;
     };
     canvas.addEventListener('pointerup', endDrag);

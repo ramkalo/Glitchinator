@@ -227,37 +227,47 @@ export function buildControlLimits() {
  * Each entry: { name, label, description }
  */
 // Order in which categories are rendered in the effect library.
-export const EFFECT_CATEGORIES = ['Adjust', 'Morph', 'Overlay', 'Ghost'];
+export const EFFECT_CATEGORIES = ['Adjust', 'Color', 'Overlay', 'Morph', 'Ghost'];
+
+// Categories that stay hidden from the tab bar unless the user has unlocked them.
+// A hidden category `X` is unlocked when the user has a saved preset named exactly
+// `X.toLowerCase()` (e.g. the 'Ghost' tab is unlocked by a preset named 'ghost').
+// To surface a hidden tab normally again, remove it from this list.
+export const HIDDEN_CATEGORIES = ['Ghost'];
 
 export const EFFECT_CATALOG = [
     // ── Adjust ──
     { name: 'basic',          label: 'Basic Adjustments',    category: 'Adjust',  description: 'Brightness, contrast, saturation, and color' },
     { name: 'blur',           label: 'Blur',                 category: 'Adjust',  description: 'Gaussian blur shaped like a vignette — sharp center, soft edges' },
-    { name: 'colorCurve',     label: 'Color Curve',          category: 'Adjust',  description: 'Curve editor over a live histogram — Value/R/G/B tone curves plus Hue vs Hue, Hue vs Sat, Hue vs Luma, and Luma vs Sat modes' },
-    { name: 'colorGel',      label: 'Color Gel',            category: 'Adjust',  description: 'Tint the image with a solid or gradient color gel' },
-    { name: 'colorPalette',    label: 'Color Palette',         category: 'Adjust',  description: 'Define 8 custom colors that other effects can reference' },
     { name: 'crop',           label: 'Crop',                 category: 'Adjust',  description: 'Crop the image' },
     { name: 'expand',         label: 'Expand',               category: 'Adjust',  description: 'Add white, black, or edge-stretched pixels around the image (inverse crop)' },
     { name: 'flip',           label: 'Flip',                 category: 'Adjust',  description: 'Mirror and quarter-turn rotate' },
     { name: 'glow',           label: 'Glow',                 category: 'Adjust',  description: 'Bloom halo around bright areas' },
-    { name: 'grain',          label: 'Grain & Noise',        category: 'Adjust',  description: 'Analog film grain and digital noise types' },
-    { name: 'hueShift',       label: 'Hue Shift',            category: 'Adjust',  description: 'Rotate all hues around the color wheel without quantizing' },
+    { name: 'grain',          label: 'Noise',                category: 'Adjust',  description: 'Analog film grain and digital noise types' },
     { name: 'resize',         label: 'Resize',               category: 'Adjust',  description: 'Resize the image — type a pixel size for one dimension; the other snaps to the source ratio' },
     { name: 'rotate',         label: 'Rotate',               category: 'Adjust',  description: 'Free rotation with on-canvas angle handle' },
     { name: 'tilt',           label: 'Tilt',                 category: 'Adjust',  description: '3D-style keystone tilt on both axes' },
 
+    // ── Color ──
+    { name: 'colorPalette',    label: 'Color Palette',         category: 'Color',   description: 'Define 8 custom colors that other effects can reference' },
+    { name: 'colorCurve',     label: 'Color Curve',          category: 'Color',   description: 'Curve editor over a live histogram — Value/R/G/B tone curves plus Hue vs Hue, Hue vs Sat, Hue vs Luma, and Luma vs Sat modes' },
+    { name: 'colorGel',      label: 'Color Gel',            category: 'Color',   description: 'Tint the image with a solid or gradient color gel' },
+    { name: 'hueShift',       label: 'Hue Shift',            category: 'Color',   description: 'Rotate all hues around the color wheel without quantizing' },
+    { name: 'chroma',         label: 'Chromatic Aberration', category: 'Color',   description: 'RGB channel separation glitch' },
+    { name: 'digitize',       label: 'Digitize',             category: 'Color',   description: 'Pixelation, color quantization, dithering, and noise' },
+    { name: 'colorRemap',     label: 'Color Remap',          category: 'Color',   description: 'Map pixel luminance or hue through a multi-stop color gradient' },
+
     // ── Morph ──
-    { name: 'chroma',         label: 'Chromatic Aberration', category: 'Morph',   description: 'RGB channel separation glitch' },
     { name: 'barrelDistortion', label: 'Barrel Distortion',  category: 'Morph',   description: 'Barrel lens distortion' },
     { name: 'smearTwist',    label: 'Smear & Twist',        category: 'Morph',   description: 'Wet paint brush smear with wave-modulated displacement' },
-    { name: 'digitize',       label: 'Digitize',             category: 'Morph',   description: 'Pixelation, color quantization, dithering, and noise' },
-    { name: 'colorRemap',     label: 'Color Remap',          category: 'Morph',   description: 'Map pixel luminance or hue through a multi-stop color gradient' },
     { name: 'kaleidoscope',  label: 'Kaleidoscope',         category: 'Morph',   description: 'Mirror, radial symmetry, and kaleidoscope modes with drag handles' },
     { name: 'lineDrag',      label: 'Line Drag',            category: 'Morph',   description: 'Smear pixel columns or rows from a control line across the image' },
     { name: 'lineGlitch',     label: 'Line Glitch',          category: 'Morph',   description: 'Tracking line glitch bands' },
     { name: 'doubleExposure', label: 'Double Exposure',      category: 'Morph',   description: 'Blend two images together' },
     { name: 'filmSoup',      label: 'Film Soup',            category: 'Morph',   description: 'Bubble/foam holes that melt through the effects above the melt point' },
     { name: 'viewport',      label: 'Viewport',             category: 'Morph',   description: 'Reveal a shaped window that cuts through selected effects' },
+    { name: 'collage',       label: 'Collage',              category: 'Morph',   description: 'Split the canvas into a grid and load an image into each cell — images skew to fill; reorder cells by drag handle' },
+    { name: 'slicer',        label: 'Slicer',               category: 'Morph',   description: 'Inverse collage — split the image along a grid and export each cell as its own numbered file' },
 
     // ── Overlay ──
     { name: 'corrupted',     label: 'Corrupted',            category: 'Overlay', description: 'Fractal square corruption spreading from seeded points' },
@@ -282,8 +292,6 @@ export const EFFECT_CATALOG = [
     { name: 'cloak',         label: 'Cloak',                category: 'Ghost', description: 'Hide text/image in the pixels — LSB, randomized, edge-adaptive, or PVD (all PNG-only), or a short text via the Resilient DCT scheme that survives re-compression' },
     { name: 'overwrite',     label: 'Overwrite',            category: 'Ghost', description: 'Overwrite standard + custom file metadata (XMP/EXIF/GPS), preserve the original, and add an AI opt-out signal' },
     { name: 'cipher',        label: 'Cipher',               category: 'Ghost', description: 'ARG text tool — build a reorderable stack of encodings (Caesar, spacer, morse, binary, hex, ASCII, URL, atbash), share the recipe as a code, and copy the output for use in text effects. Does not alter the image' },
-    { name: 'collage',       label: 'Collage',              category: 'Ghost', description: 'Split the canvas into a grid and load an image into each cell — images skew to fill; reorder cells by drag handle' },
-    { name: 'slicer',        label: 'Slicer',               category: 'Ghost', description: 'Inverse collage — split the image along a grid and export each cell as its own numbered file' },
 
     // { name: 'moire',        label: 'Moire',                description: 'Two overlapping line grids that interfere to produce wave and band patterns' },
     //{ name: 'vignette',       label: 'Vignette',             description: 'Edge darkening or brightening' },

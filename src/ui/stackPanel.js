@@ -1,5 +1,6 @@
-import { EFFECT_CATALOG, EFFECT_CATEGORIES, getEffect } from '../effects/registry.js';
+import { EFFECT_CATALOG, EFFECT_CATEGORIES, HIDDEN_CATEGORIES, getEffect } from '../effects/registry.js';
 import { getStack, addEffect, removeEffect, moveEffect, duplicateEffect, setInstanceParam, canAddEffect } from '../state/effectStack.js';
+import { presets } from '../state/params.js';
 import { saveState } from '../state/undo.js';
 import { getPref } from './preferences.js';
 import { buildEffectBody, labelPreviewText } from './stackControls.js';
@@ -74,9 +75,12 @@ function initTabs() {
     const currentTab = document.getElementById('panelCurrentTab');
     if (!panel || !catTabs || !currentTab) return;
 
-    // Only categories that actually contain effects get a tab.
+    // Only categories that actually contain effects get a tab. Hidden categories
+    // additionally require an unlock preset named exactly `<category>.toLowerCase()`.
     const populated = EFFECT_CATEGORIES.filter(c =>
-        EFFECT_CATALOG.some(e => e.category === c)
+        EFFECT_CATALOG.some(e => e.category === c) &&
+        (!HIDDEN_CATEGORIES.includes(c) ||
+         Object.prototype.hasOwnProperty.call(presets, c.toLowerCase()))
     );
 
     catTabs.innerHTML = '';

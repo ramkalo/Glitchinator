@@ -250,6 +250,7 @@ export function applyText(ctx, p, srcCanvas) {
     const align   = p.textAlign ?? 'left';
     const kerning = p.textKerning ?? 0;
     const reverse = p.textReverse ?? false;
+    const flip    = p.textFlip ?? false;
 
     for (let i = 0; i < lines.length; i++) {
         const line  = lines[i];
@@ -280,7 +281,9 @@ export function applyText(ctx, p, srcCanvas) {
         for (let j = 0; j < chars.length; j++) {
             const ch    = chars[j];
             const charW = widths[j];
-            const u     = charX / tw;
+            // Flip mirrors the line horizontally: anchor each glyph at its mirrored
+            // parameter and scale local-x by −1 below so glyph shape + order both mirror.
+            const u     = flip ? (tw - charX) / tw : charX / tw;
 
             // Bilinear output position P(u, v)
             const ox = (1 - u) * (1 - v) * tlx + u * (1 - v) * trx
@@ -307,11 +310,15 @@ export function applyText(ctx, p, srcCanvas) {
                 dPdv_x / th,  dPdv_y / th,
                 ox, oy
             );
+            if (flip) ctx.scale(-1, 1);
 
             if (outlineW > 0) ctx.strokeText(ch, 0, 0);
             ctx.fillText(ch, 0, 0);
             if (p.textStrike) {
                 ctx.fillRect(0, size * 0.42, charW, Math.max(1, size * 0.06));
+            }
+            if (p.textUnderline) {
+                ctx.fillRect(0, size * 0.9, charW, Math.max(1, size * 0.06));
             }
 
             ctx.restore();
@@ -332,7 +339,7 @@ export const textEffect = {
     bindUniforms: (gl, prog, p) => { fade.bindUniforms(gl, prog, p); blend.bindUniforms(gl, prog, p); },
     paramKeys: [
         'text', 'textFont', 'textSize', 'textBold', 'textItalic', 'textStrike', 'textLineHeight',
-        'textReverse', 'textKerning',
+        'textReverse', 'textUnderline', 'textFlip', 'textKerning',
         'textColor', 'textBg', 'textBgOpacity', 'textBgGrainSize',
         'textOutlineWidth', 'textOutlineColor',
         'textWrap', 'textAlign', 'textVAlign',
@@ -369,11 +376,13 @@ export const textEffect = {
         textSize:       { default: 128,  min: 8,   max: 1024, label: 'Size' },
         textBold:       { default: false, label: 'Bold' },
         textItalic:     { default: false, label: 'Italic' },
+        textUnderline:  { default: false, label: 'Underline' },
         textStrike:     { default: false, label: 'Strikethrough' },
+        textFlip:       { default: false, label: 'Flip' },
         textLineHeight: { default: 1.2, min: 0.5, max: 3, step: 0.1, label: 'Line Height' },
         textReverse:    { default: false, label: 'Reverse' },
         textKerning:    { default: 0, min: -50, max: 200, step: 1, label: 'Kerning' },
-        textColor:          { default: 'palette0', label: 'Color', type: 'paletteSelect', options: [
+        textColor:          { default: 'palette0', label: 'Text', type: 'paletteSelect', options: [
             ['palette0','Color Palette 1'], ['palette1','Color Palette 2'], ['palette2','Color Palette 3'],
             ['palette3','Color Palette 4'], ['palette4','Color Palette 5'], ['palette5','Color Palette 6'],
             ['palette6','Color Palette 7'], ['palette7','Color Palette 8'],
@@ -385,7 +394,7 @@ export const textEffect = {
         textNoiseRandomize: { default: null, label: 'Randomize' },
         textCharAlpha:      { default: 1, min: 0, max: 1, step: 0.01, label: 'Text Opacity' },
         textOutlineWidth:   { default: 2, min: 0, max: 20, step: 0.5, label: 'Outline Thiccness' },
-        textOutlineColor:   { default: 'auto', label: 'Outline Color', type: 'paletteSelect', options: [
+        textOutlineColor:   { default: 'auto', label: 'Outline', type: 'paletteSelect', options: [
             ['auto','Auto'],
             ['palette0','Color Palette 1'], ['palette1','Color Palette 2'], ['palette2','Color Palette 3'],
             ['palette3','Color Palette 4'], ['palette4','Color Palette 5'], ['palette5','Color Palette 6'],
@@ -407,7 +416,7 @@ export const textEffect = {
         textBgGrainSize:  { default: 4, min: 1, max: 50, step: 1, label: 'BG Grain Size' },
         textWrap:       { default: true,     label: 'Word Wrap' },
         textAlign:      { default: 'center', label: 'Justify', options: [['left','Left'], ['center','Center'], ['right','Right'], ['justify','Justify']] },
-        textVAlign:     { default: 'middle', label: 'V-Align', options: [['top','Top'], ['middle','Middle'], ['bottom','Bottom']] },
+        textVAlign:     { default: 'middle', label: 'Vertical Alignment', options: [['top','Top'], ['middle','Middle'], ['bottom','Bottom']] },
         // All 4 corners stored independently (% of canvas W/H).
         // TL, TR, BR, BL — each corner only controls itself.
         textTLx:        { default: 10, label: 'TL X' },
@@ -418,8 +427,7 @@ export const textEffect = {
         textBRy:        { default: 95, label: 'BR Y' },
         textBLx:        { default: 10, label: 'BL X' },
         textBLy:        { default: 95, label: 'BL Y' },
-        textBoxReset:       { default: null,  label: 'Reset Box' },
-        textBoxRightAngles: { default: null,  label: 'Right Angles' },
+        textBoxRightAngles: { default: null,  label: 'Reset Angles' },
         // Rendered as the small lock toggle beside Right Angles, not as a checkbox.
         textBoxLockAngles:  { default: false, label: 'Lock Angles' },
         // Rendered as the small grid toggle beside Right Angles, not as a checkbox.
@@ -429,10 +437,9 @@ export const textEffect = {
     },
     enabled: (p) => p.textEnabled && !!p.text,
     uiGroups: [
-        { keys: ['text', 'textFont', 'textSize', 'textBold', 'textItalic', 'textStrike', 'textLineHeight', 'textReverse', 'textKerning'] },
-        { label: 'Color', keys: ['textColor', 'textNoiseRandomize', 'textCharAlpha', 'textOutlineWidth', 'textOutlineColor', 'textBg', 'textBgOpacity', 'textBgGrainSize'] },
-        { label: 'Layout', keys: ['textWrap', 'textAlign', 'textVAlign'] },
-        { label: 'Box', keys: ['textBoxReset', 'textBoxRightAngles'] },
+        { label: 'Text', keys: ['text', 'textFont', 'textSize', 'textLineHeight', 'textKerning', 'textBold', 'textItalic', 'textStrike', 'textReverse', 'textUnderline', 'textFlip'] },
+        { label: 'Layout', keys: ['textBoxRightAngles', 'textAlign', 'textVAlign', 'textWrap'] },
+        { label: 'Color', keys: ['textColor', 'textNoiseRandomize', 'textOutlineColor', 'textBg', 'textCharAlpha', 'textOutlineWidth', 'textBgOpacity', 'textBgGrainSize'] },
         blend.uiGroup,
         fade.uiGroup,
     ],

@@ -79,6 +79,7 @@ export const colorPaletteEffect = {
                 ['perimeter', 'Perimeter'],
                 ['center',    'Center'],
                 ['target',    'Target'],
+                ['external',  'External Image'],
             ],
         },
         paletteTargetX: { default: 0.3, hidden: true },
@@ -96,8 +97,6 @@ export const colorPaletteEffect = {
         paletteSortByLuminance: { default: null, label: 'Sort by Luminance' },
         paletteCopyHex:      { default: null, label: 'Copy Hex' },
         palettePaste:        { default: null, label: 'Paste Hex' },
-        paletteLoadImage:    { default: null, label: 'Load Palette Image' },
-        palettePullFromImage:{ default: null, label: 'Pull from Palette Image' },
         // Hidden backup of custom colors — preserved when switching to a named preset,
         // restored when switching back to Custom.
         paletteCustom0: { default: null },
@@ -133,10 +132,9 @@ export const colorPaletteEffect = {
     enabled: (p) => p.paletteEnabled,
     uiGroups: [
         { label: 'Preset Palette',        keys: ['palettePreset'] },
-        { label: 'Color from Image',      keys: ['paletteFromImage'] },
         { label: 'Colors',                keys: [...Array.from({ length: 8 }, (_, i) => `palette${i}`), 'paletteSortByLuminance'] },
         { label: 'Batch Hex Update',      keys: ['paletteCopyHex', 'palettePaste'] },
-        { label: 'External Image Palette', keys: ['paletteLoadImage', 'palettePullFromImage'] },
+        { label: 'Color from Image',      keys: ['paletteFromImage'] },
     ],
     glsl: `void main() { fragColor = texture(uTex, vUV); }`,
 };
