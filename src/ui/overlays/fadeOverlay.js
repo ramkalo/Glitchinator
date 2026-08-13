@@ -19,7 +19,7 @@ export function fadeVertexScreenPositions(p, cx, cy, W, H) {
     });
 }
 
-function pointInScreenPoly(mx, my, verts) {
+export function pointInScreenPoly(mx, my, verts) {
     let inside = false;
     for (let i = 0, j = verts.length - 1; i < verts.length; j = i++) {
         const [xi, yi] = verts[i], [xj, yj] = verts[j];

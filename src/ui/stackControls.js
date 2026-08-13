@@ -1657,8 +1657,28 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         });
         paintLock();
 
+        const snapBtn = document.createElement('button');
+        snapBtn.className = 'btn btn-sm';
+        snapBtn.style.cssText = 'padding:2px 8px;flex-shrink:0;';
+        snapBtn.textContent = '▦';
+        const paintSnap = () => {
+            const on = !!inst.params.textBoxSnap;
+            snapBtn.title = on
+                ? 'Snap to grid on — edges/center align to thirds + center lines while dragging'
+                : 'Snap to grid off — box moves freely';
+            snapBtn.style.opacity = on ? '1' : '0.6';
+            snapBtn.classList.toggle('btn-primary', on);
+        };
+        snapBtn.addEventListener('click', () => {
+            saveState();
+            setInstanceParam(inst.id, 'textBoxSnap', !inst.params.textBoxSnap);
+            paintSnap();
+        });
+        paintSnap();
+
         row.appendChild(btn);
         row.appendChild(lockBtn);
+        row.appendChild(snapBtn);
         group.appendChild(row);
         return group;
     }

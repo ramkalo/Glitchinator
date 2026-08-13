@@ -650,6 +650,20 @@ export function getPixelsBeforeInstance(stack, instId) {
     gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     destroyFBO(tempFBO);
+
+    // _runLinear resizes the shared canvas + fboPool whenever the sampled slice contains a
+    // size-changing transform (crop/rotate). Reset them to the original image size so the
+    // live preview isn't left shrunken — mirrors _precomputeInternalTextures' reset. Without
+    // this the preview squishes (permanently, for read-only callers like the curve histogram
+    // that fire no re-render; a flicker for callers that do).
+    const rw = originalImage.width, rh = originalImage.height;
+    if (canvas.width !== rw || canvas.height !== rh) {
+        canvas.width  = rw;
+        canvas.height = rh;
+        gl.viewport(0, 0, rw, rh);
+    }
+    if (!fboPool[0] || fboPool[0].width !== rw || fboPool[0].height !== rh) reallocFBOs(rw, rh);
+
     return { pixels, width: w, height: h };
 }
 

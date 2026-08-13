@@ -344,7 +344,7 @@ export const textEffect = {
     ],
     handleParams: [
         'textTLx', 'textTLy', 'textTRx', 'textTRy', 'textBRx', 'textBRy', 'textBLx', 'textBLy',
-        'textBoxLockAngles',
+        'textBoxLockAngles', 'textBoxSnap',
         ...fade.handleParams,
     ],
     // Shown after the stack-list label so several Text effects tell themselves apart.
@@ -422,6 +422,8 @@ export const textEffect = {
         textBoxRightAngles: { default: null,  label: 'Right Angles' },
         // Rendered as the small lock toggle beside Right Angles, not as a checkbox.
         textBoxLockAngles:  { default: false, label: 'Lock Angles' },
+        // Rendered as the small grid toggle beside Right Angles, not as a checkbox.
+        textBoxSnap:        { default: false, label: 'Snap to Grid' },
         ...fade.params,
         ...blend.params,
     },

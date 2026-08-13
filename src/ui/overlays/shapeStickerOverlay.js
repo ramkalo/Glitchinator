@@ -1,8 +1,8 @@
 import { canvas } from '../../renderer/glstate.js';
 import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
-import { uiCtx, uiOverlay, syncSize, drawHandle, drawRotHandle, drawCornerHandle, HIT_RADIUS, applyGrab } from '../overlayUtils.js';
-import { drawFadeShape, getFadeHandlePositions, hitTestFadeVertices, isInsideFade } from './fadeOverlay.js';
+import { uiCtx, uiOverlay, syncSize, drawRotHandle, drawCornerHandle, HIT_RADIUS, applyGrab, isInsideFadeShape } from '../overlayUtils.js';
+import { drawFadeShape, getFadeHandlePositions, hitTestFadeVertices, isInsideFade, pointInScreenPoly } from './fadeOverlay.js';
 
 function ssVertexScreenPositions(p) {
     const W = uiOverlay.width, H = uiOverlay.height;
@@ -156,7 +156,6 @@ export function drawShapeSticker(p) {
     }
 
     drawRotHandle(rotHandle[0], rotHandle[1]);
-    drawHandle(cx, cy);
 
     if (p.shapeStickerFillType === 'image-grab') {
         const gcx  = (0.5 + (p.shapeStickerGrabX ?? 30) / 100) * W;
@@ -238,7 +237,6 @@ export function hitTestShapeSticker(e) {
 
     const cx = (0.5 + p.shapeStickerX / 100) * W;
     const cy = (0.5 - p.shapeStickerY / 100) * H;
-    if (Math.hypot(mx - cx, my - cy) <= HIT_RADIUS) return 'center';
 
     const angle = (p.shapeStickerAngle ?? 0) * Math.PI / 180;
     const cosA = Math.cos(angle), sinA = Math.sin(angle);
@@ -314,6 +312,15 @@ export function hitTestShapeSticker(e) {
         if (edgeW && Math.hypot(mx - edgeW[0], my - edgeW[1]) <= HIT_RADIUS) return 'fadeEdgeW';
         if (edgeH && Math.hypot(mx - edgeH[0], my - edgeH[1]) <= HIT_RADIUS) return 'fadeEdgeH';
         if (isInsideFade(p, mx, my, fcx, fcy, W, H)) return 'fadeCenter';
+    }
+
+    // Grab anywhere inside the sticker body to move it (like the fade tools).
+    if (shape === 'rectangle') {
+        if (isInsideFadeShape(mx, my, cx, cy, sw / 2, sh / 2, angle, true))  return 'center';
+    } else if (shape === 'ellipse') {
+        if (isInsideFadeShape(mx, my, cx, cy, sw / 2, sh / 2, angle, false)) return 'center';
+    } else if (screenVerts.length >= 3) {
+        if (pointInScreenPoly(mx, my, screenVerts)) return 'center';
     }
     return null;
 }

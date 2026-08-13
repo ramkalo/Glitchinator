@@ -1838,6 +1838,7 @@ input[type="checkbox"].switch:checked::after {
     cursor: grab;
     padding: 0 2px;
     flex-shrink: 0;
+    touch-action: none;   /* let our pointer-drag handlers own the gesture on touch */
 }
 
 .stack-drag-handle:active {

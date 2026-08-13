@@ -31,7 +31,9 @@ import { scanlinesEffect }       from './scanlines.js';
 import { shapeStickerEffect }    from './shapeSticker.js';
 import { smearTwistEffect }      from './smearTwist.js';
 import { textEffect }            from './text.js';
-import { transformEffect }       from './transform.js';
+import { flipEffect }            from './flip.js';
+import { rotateEffect }          from './rotate.js';
+import { tiltEffect }            from './tilt.js';
 import { tunnelEffect }          from './tunnel.js';
 import { viewportEffect }        from './viewport.js';
 import { wrinkleEffect }         from './wrinkle.js';
@@ -130,7 +132,9 @@ function validateEffect(effect) {
  * To add a new effect: create src/effects/myEffect.js, import it here, and add it to EFFECTS.
  */
 export const EFFECTS = [
-    transformEffect,
+    flipEffect,
+    rotateEffect,
+    tiltEffect,
     cropEffect,
     expandEffect,
     resizeEffect,
@@ -234,10 +238,13 @@ export const EFFECT_CATALOG = [
     { name: 'colorPalette',    label: 'Color Palette',         category: 'Adjust',  description: 'Define 8 custom colors that other effects can reference' },
     { name: 'crop',           label: 'Crop',                 category: 'Adjust',  description: 'Crop the image' },
     { name: 'expand',         label: 'Expand',               category: 'Adjust',  description: 'Add white, black, or edge-stretched pixels around the image (inverse crop)' },
+    { name: 'flip',           label: 'Flip',                 category: 'Adjust',  description: 'Mirror and quarter-turn rotate' },
     { name: 'glow',           label: 'Glow',                 category: 'Adjust',  description: 'Bloom halo around bright areas' },
     { name: 'grain',          label: 'Grain & Noise',        category: 'Adjust',  description: 'Analog film grain and digital noise types' },
     { name: 'hueShift',       label: 'Hue Shift',            category: 'Adjust',  description: 'Rotate all hues around the color wheel without quantizing' },
     { name: 'resize',         label: 'Resize',               category: 'Adjust',  description: 'Resize the image — type a pixel size for one dimension; the other snaps to the source ratio' },
+    { name: 'rotate',         label: 'Rotate',               category: 'Adjust',  description: 'Free rotation with on-canvas angle handle' },
+    { name: 'tilt',           label: 'Tilt',                 category: 'Adjust',  description: '3D-style keystone tilt on both axes' },
 
     // ── Morph ──
     { name: 'chroma',         label: 'Chromatic Aberration', category: 'Morph',   description: 'RGB channel separation glitch' },
@@ -247,7 +254,6 @@ export const EFFECT_CATALOG = [
     { name: 'colorRemap',     label: 'Color Remap',          category: 'Morph',   description: 'Map pixel luminance or hue through a multi-stop color gradient' },
     { name: 'kaleidoscope',  label: 'Kaleidoscope',         category: 'Morph',   description: 'Mirror, radial symmetry, and kaleidoscope modes with drag handles' },
     { name: 'lineDrag',      label: 'Line Drag',            category: 'Morph',   description: 'Smear pixel columns or rows from a control line across the image' },
-    { name: 'transform',      label: 'Transform',            category: 'Morph',   description: 'Flip and rotate' },
     { name: 'lineGlitch',     label: 'Line Glitch',          category: 'Morph',   description: 'Tracking line glitch bands' },
     { name: 'doubleExposure', label: 'Double Exposure',      category: 'Morph',   description: 'Blend two images together' },
     { name: 'filmSoup',      label: 'Film Soup',            category: 'Morph',   description: 'Bubble/foam holes that melt through the effects above the melt point' },

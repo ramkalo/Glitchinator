@@ -169,6 +169,8 @@ const _RENAMES = [
     { from: 'watermark',     to: 'ghostmark',        prefixes: [['watermark', 'ghostmark']] },
     { from: 'embedHidden',   to: 'cloak',            prefixes: [['embedHidden', 'cloak']] },
     { from: 'metadata',      to: 'overwrite',        prefixes: [['metadata', 'overwrite']] },
+    // Transform split into Flip / Rotate / Tilt — the discrete flips/turns became Flip.
+    { from: 'transform',     to: 'flip',             prefixes: [['transform', 'flip']] },
 ];
 
 function _migrateInstance(inst) {

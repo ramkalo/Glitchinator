@@ -15,7 +15,8 @@ import { drawLineDrag,       hitTestLineDrag,       onDragLineDrag       } from 
 import { drawChroma, hitTestChroma                                        } from './overlays/chromaOverlay.js';
 import { drawVignette,       hitTestVignette,       onDragVignette       } from './overlays/vignetteOverlay.js';
 import { drawCRTCurvature,   hitTestCRTCurvature,   onDragCRTCurvature  } from './overlays/crtOverlay.js';
-import { drawTransform,      hitTestTransform,      onDragTransform     } from './overlays/transformOverlay.js';
+import { drawRotate,         hitTestRotate,         onDragRotate        } from './overlays/rotateOverlay.js';
+import { drawTilt,           hitTestTilt,           onDragTilt          } from './overlays/tiltOverlay.js';
 import { drawCorrupted,      hitTestCorrupted                            } from './overlays/corruptedOverlay.js';
 import { drawGhostmark,      hitTestGhostmark,       onDragGhostmark,     ghostmarkCenterAnchor, ghostmarkRotAnchor, ghostmarkSizeAnchor } from './overlays/ghostmarkOverlay.js';
 import { drawTextOverlay,    hitTestText,            onDragText,          textCorners } from './overlays/textOverlay.js';
@@ -77,7 +78,8 @@ onStackChange((key) => {
     if (state.mode === 'chroma')        drawChroma(inst.params);
     if (state.mode === 'vignette')      drawVignette(inst.params);
     if (state.mode === 'barrelDistortion')  drawCRTCurvature(inst.params);
-    if (state.mode === 'transform')     drawTransform(inst.params);
+    if (state.mode === 'rotate')        drawRotate(inst.params);
+    if (state.mode === 'tilt')          drawTilt(inst.params);
     if (state.mode === 'corrupted')     drawCorrupted(inst.params);
     if (state.mode === 'ghostmark')     drawGhostmark(inst.params);
     if (state.mode === 'text')          drawTextOverlay(inst.params);
@@ -286,13 +288,22 @@ export function hideCRTCurvatureOverlay() {
     if (state.mode === 'barrelDistortion') _hideActive();
 }
 
-export function showTransformOverlay(inst) {
-    _activate('transform', inst, null, null);
-    drawTransform(inst.params);
+export function showRotateOverlay(inst) {
+    _activate('rotate', inst, null, null);
+    drawRotate(inst.params);
 }
 
-export function hideTransformOverlay() {
-    if (state.mode === 'transform') _hideActive();
+export function hideRotateOverlay() {
+    if (state.mode === 'rotate') _hideActive();
+}
+
+export function showTiltOverlay(inst) {
+    _activate('tilt', inst, null, null);
+    drawTilt(inst.params);
+}
+
+export function hideTiltOverlay() {
+    if (state.mode === 'tilt') _hideActive();
 }
 
 export function showCorruptedOverlay(inst) {
@@ -618,6 +629,7 @@ function _hideActive() {
     state.handle     = null;
     state.dragAnchor = null;
     state.collageTarget = null;
+    state.snapGuides = null;
     uiOverlay.getContext('2d').clearRect(0, 0, uiOverlay.width, uiOverlay.height);
     uiOverlay.style.pointerEvents = 'none';
     uiOverlay.style.cursor = '';
@@ -659,8 +671,10 @@ function getCursorForMode(mode, h) {
         case 'vignette':
         case 'barrelDistortion':
             return h === 'center' ? 'grab' : h === 'rot' ? 'crosshair' : h === 'edgeW' ? 'ew-resize' : h === 'edgeH' ? 'ns-resize' : 'default';
-        case 'transform':
-            return h === 'rot' ? 'crosshair' : h === 'tiltX' ? 'ns-resize' : h === 'tiltY' ? 'ew-resize' : 'default';
+        case 'rotate':
+            return h === 'rot' ? 'crosshair' : 'default';
+        case 'tilt':
+            return h === 'tilt' ? 'move' : 'default';
         case 'doubleExposure':
             return fadeCursor(h) || (h === 'imgPos' ? 'grab' : 'default');
         case 'blendMap':
@@ -761,7 +775,8 @@ const HIT_FNS = {
     lineDrag:       hitTestLineDrag,
     vignette:       hitTestVignette,
     barrelDistortion:   hitTestCRTCurvature,
-    transform:      hitTestTransform,
+    rotate:         hitTestRotate,
+    tilt:           hitTestTilt,
     corrupted:      hitTestCorrupted,
     ghostmark:      hitTestGhostmark,
     text:           hitTestText,
@@ -792,7 +807,8 @@ const DRAG_FNS = {
     lineDrag:       onDragLineDrag,
     vignette:       onDragVignette,
     barrelDistortion:   onDragCRTCurvature,
-    transform:      onDragTransform,
+    rotate:         onDragRotate,
+    tilt:           onDragTilt,
     text:           onDragText,
     shapeSticker:   onDragShapeSticker,
     qr:             onDragQR,
@@ -823,7 +839,8 @@ const DRAW_FNS = {
     lineDrag:       drawLineDrag,
     chroma:         drawChroma,
     vignette:       drawVignette,
-    transform:      drawTransform,
+    rotate:         drawRotate,
+    tilt:           drawTilt,
     text:           drawTextOverlay,
     doubleExposure: drawDoubleExposure,
     shapeSticker:   drawShapeSticker,

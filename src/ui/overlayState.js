@@ -1,7 +1,7 @@
 // Shared mutable state for the one active overlay at a time.
 // All overlay modules import this object and read/write its properties.
 export const state = {
-    mode:        null,   // 'fade' | 'crop' | 'viewport' | 'lineDrag' | 'chroma' | 'vignette' | 'barrelDistortion' | 'transform' | 'corrupted' | 'text' | 'doubleExposure' | 'shapeSticker' | 'matrixRain' | 'smearTwist' | null
+    mode:        null,   // 'fade' | 'crop' | 'viewport' | 'lineDrag' | 'chroma' | 'vignette' | 'barrelDistortion' | 'rotate' | 'tilt' | 'corrupted' | 'text' | 'doubleExposure' | 'shapeSticker' | 'matrixRain' | 'smearTwist' | null
     instId:      null,
     dragging:    false,
     xKey:        null,
@@ -18,4 +18,5 @@ export const state = {
     cutResetting: false, // re-entrancy guard for resetCutVertices
     cutActive:    -1,    // index of the selected pasted copy in the Cut Out tool
     collageTarget: null, // cell index currently under the pointer during a collage swap-drag
+    snapGuides:   null,  // { v: frac|null, h: frac|null } — text-box guides being snapped to
 };
