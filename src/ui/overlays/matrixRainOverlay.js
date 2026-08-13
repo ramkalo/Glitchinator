@@ -1,7 +1,7 @@
 import { canvas } from '../../renderer/glstate.js';
 import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
-import { uiCtx, uiOverlay, syncSize, drawHandle, HIT_RADIUS, applyGrab } from '../overlayUtils.js';
+import { uiCtx, uiOverlay, syncSize, drawHubHandle, HUB_R, HIT_RADIUS, applyGrab } from '../overlayUtils.js';
 import { drawFadeShape, getFadeHandlePositions, hitTestFadeVertices, isInsideFade } from './fadeOverlay.js';
 
 export function drawMatrixRain(p) {
@@ -16,7 +16,7 @@ export function drawMatrixRain(p) {
     const fcy = (0.5 - p.matrixRainFadeY / 100) * h;
     drawFadeShape(p, fcx, fcy, w, h);
 
-    drawHandle(cx, cy);
+    drawHubHandle(cx, cy);
 }
 
 export function hitTestMatrixRain(e) {
@@ -30,7 +30,7 @@ export function hitTestMatrixRain(e) {
 
     const cx = (0.5 + p.matrixRainX / 100) * W;
     const cy = (0.5 - p.matrixRainY / 100) * H;
-    if (Math.hypot(mx - cx, my - cy) <= HIT_RADIUS) return 'center';
+    if (Math.hypot(mx - cx, my - cy) <= HUB_R) return 'center';
 
     if (!p[state.enabledKey]) return null;
 

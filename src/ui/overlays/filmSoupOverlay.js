@@ -1,7 +1,7 @@
 import { canvas } from '../../renderer/glstate.js';
 import { setInstanceParam, getStack } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
-import { uiCtx, uiOverlay, syncSize, HIT_RADIUS, drawHandle } from '../overlayUtils.js';
+import { uiCtx, uiOverlay, syncSize, HIT_RADIUS, HUB_R, drawHandle, drawHubHandle } from '../overlayUtils.js';
 
 const MAX_BUBBLES = 256;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -38,19 +38,9 @@ function bubbleRadiusFrac(p, b) {
     return Math.max(0.002, (size / 100) * 0.5 * (1 + s * dev / 100));
 }
 
-// Draw the center-point handle (distinct yellow ring + crosshair).
+// Draw the center-point hub — dashed circle, grab it to move all bubbles together.
 function drawCenterHandle(px, py) {
-    uiCtx.save();
-    uiCtx.strokeStyle = 'rgba(255, 210, 60, 0.95)';
-    uiCtx.lineWidth = 2;
-    uiCtx.beginPath();
-    uiCtx.arc(px, py, 9, 0, Math.PI * 2);
-    uiCtx.stroke();
-    uiCtx.beginPath();
-    uiCtx.moveTo(px - 13, py); uiCtx.lineTo(px + 13, py);
-    uiCtx.moveTo(px, py - 13); uiCtx.lineTo(px, py + 13);
-    uiCtx.stroke();
-    uiCtx.restore();
+    drawHubHandle(px, py);
 }
 
 export function drawFilmSoup(p) {
@@ -101,7 +91,7 @@ export function hitTestFilmSoup(e) {
 
     const hx = (0.5 + cx / 100) * W;
     const hy = (0.5 + cy / 100) * H;
-    if (Math.hypot(mx - hx, my - hy) <= HIT_RADIUS) return 'center';
+    if (Math.hypot(mx - hx, my - hy) <= HUB_R) return 'center';
 
     return null;
 }

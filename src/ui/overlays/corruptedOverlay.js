@@ -1,7 +1,7 @@
 import { canvas } from '../../renderer/glstate.js';
 import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
-import { uiCtx, uiOverlay, syncSize, drawHandle, HIT_RADIUS } from '../overlayUtils.js';
+import { uiCtx, uiOverlay, syncSize, drawHubHandle, HUB_R } from '../overlayUtils.js';
 import { drawFadeFromState, hitTestFadeHandles, hitTestFadeRegion } from './fadeOverlay.js';
 
 export function drawCorrupted(p) {
@@ -11,7 +11,7 @@ export function drawCorrupted(p) {
     drawFadeFromState(p, w, h);
     const cx = (0.5 + p.corruptedX / 100) * w;
     const cy = (0.5 - p.corruptedY / 100) * h;
-    drawHandle(cx, cy);
+    drawHubHandle(cx, cy);
 }
 
 export function hitTestCorrupted(e) {
@@ -27,6 +27,6 @@ export function hitTestCorrupted(e) {
     if (fh) return fh;
     const cx = (0.5 + p.corruptedX / 100) * W;
     const cy = (0.5 - p.corruptedY / 100) * H;
-    if (Math.hypot(mx - cx, my - cy) <= HIT_RADIUS) return 'center';
+    if (Math.hypot(mx - cx, my - cy) <= HUB_R) return 'center';
     return hitTestFadeRegion(p, mx, my, W, H);
 }

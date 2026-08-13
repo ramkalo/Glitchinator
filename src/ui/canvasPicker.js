@@ -664,7 +664,7 @@ function getCursorForMode(mode, h) {
             return fadeCursor(h) || 'default';
         case 'lineDrag':
             return fadeCursor(h)
-                || ((h === 'center') ? 'grab'
+                || ((h === 'center' || h === 'line') ? 'grab'
                 : (h === 'rot' || h === 'lineRot') ? 'crosshair' : 'default');
         case 'matrixRain':
             return fadeCursor(h) || (h === 'center' ? 'grab' : 'default');

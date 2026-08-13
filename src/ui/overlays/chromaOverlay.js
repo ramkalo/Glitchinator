@@ -1,7 +1,7 @@
 import { canvas } from '../../renderer/glstate.js';
 import { getStack } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
-import { uiCtx, uiOverlay, syncSize, clear, drawHandle, HIT_RADIUS } from '../overlayUtils.js';
+import { uiCtx, uiOverlay, syncSize, clear, drawHubHandle, HUB_R } from '../overlayUtils.js';
 import { drawFadeFromState, hitTestFadeHandles, hitTestFadeRegion } from './fadeOverlay.js';
 
 export function drawChroma(p) {
@@ -11,7 +11,7 @@ export function drawChroma(p) {
     if (p.chromaMode !== 'outline') return;
     const cx = (0.5 + p.chromaOutlineX / 100) * uiOverlay.width;
     const cy = (0.5 - p.chromaOutlineY / 100) * uiOverlay.height;
-    drawHandle(cx, cy);
+    drawHubHandle(cx, cy);
 }
 
 export function hitTestChroma(e) {
@@ -28,7 +28,7 @@ export function hitTestChroma(e) {
     if (p.chromaMode === 'outline') {
         const cx = (0.5 + p.chromaOutlineX / 100) * W;
         const cy = (0.5 - p.chromaOutlineY / 100) * H;
-        if (Math.hypot(mx - cx, my - cy) <= HIT_RADIUS) return 'center';
+        if (Math.hypot(mx - cx, my - cy) <= HUB_R) return 'center';
     }
     return hitTestFadeRegion(p, mx, my, W, H);
 }

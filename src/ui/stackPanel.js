@@ -153,7 +153,7 @@ function makeCatalogItem(entry) {
             renderStackList();
             return;
         }
-        const PALETTE_DEPENDENT = new Set(['colorRemap', 'matrixRain', 'shapeSticker', 'text', 'corrupted', 'drawTool', 'mesh', 'tunnel', 'colorGel', 'halftone', 'wrinkle', 'caustics', 'qr']);
+        const PALETTE_DEPENDENT = new Set(['colorRemap', 'matrixRain', 'shapeSticker', 'text', 'corrupted', 'drawTool', 'mesh', 'tunnel', 'colorGel', 'halftone', 'wrinkle', 'caustics', 'qr', 'lineDrag']);
         saveState();
         if (PALETTE_DEPENDENT.has(entry.name) && !getStack().some(i => i.effectName === 'colorPalette')) {
             addEffect('colorPalette');

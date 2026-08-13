@@ -1,7 +1,8 @@
 import { canvas } from '../../renderer/glstate.js';
 import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
-import { uiCtx, uiOverlay, syncSize, drawHandle, drawCornerHandle, HIT_RADIUS } from '../overlayUtils.js';
+import { uiCtx, uiOverlay, syncSize, drawCornerHandle, HIT_RADIUS, applyGrab } from '../overlayUtils.js';
+import { pointInScreenPoly } from './fadeOverlay.js';
 import { vpTextFontStr } from '../../effects/viewport.js';
 
 // Screen-space bbox of the text-mode glyphs, measured at the on-screen size so the
@@ -104,7 +105,6 @@ export function drawViewport(p) {
         uiCtx.setLineDash([]);
         uiCtx.strokeRect(left, top, hw * 2, hh * 2);
 
-        drawHandle(cx, cy);
         drawCornerHandle(left,  top);
         drawCornerHandle(right, top);
         drawCornerHandle(right, bottom);
@@ -130,7 +130,6 @@ export function drawViewport(p) {
         uiCtx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
         uiCtx.stroke();
 
-        drawHandle(cx, cy);
         drawCornerHandle(cx + rx, cy);
         drawCornerHandle(cx, cy + ry);
 
@@ -161,7 +160,6 @@ export function drawViewport(p) {
         }
         uiCtx.stroke();
 
-        drawHandle(cx, cy);
         for (const [vx, vy] of verts) drawCornerHandle(vx, vy);
     }
 }
@@ -182,8 +180,7 @@ export function hitTestViewport(e) {
 
     const { cx, cy, W, H } = vpCenter(p);
 
-    if (Math.hypot(mx - cx, my - cy) <= HIT_RADIUS) return 'center';
-
+    // Discrete resize handles win; then clicking anywhere inside the shape moves it.
     if (p.vpShape === 'rectangle') {
         const hw = (p.vpW / 200) * W;
         const hh = (p.vpH / 200) * H;
@@ -196,16 +193,19 @@ export function hitTestViewport(e) {
         for (const [name, [hx, hy]] of Object.entries(corners)) {
             if (Math.hypot(mx - hx, my - hy) <= HIT_RADIUS) return name;
         }
+        if (Math.abs(mx - cx) <= hw && Math.abs(my - cy) <= hh) return 'center';
     } else if (p.vpShape === 'ellipse') {
         const rx = (p.vpW / 200) * W;
         const ry = (p.vpH / 200) * H;
         if (Math.hypot(mx - (cx + rx), my - cy) <= HIT_RADIUS) return 'edgeR';
         if (Math.hypot(mx - cx, my - (cy + ry)) <= HIT_RADIUS) return 'edgeB';
+        if (((mx - cx) / rx) ** 2 + ((my - cy) / ry) ** 2 <= 1) return 'center';
     } else {
         const verts = vpVertexScreenPositions(p);
         for (let i = 0; i < verts.length; i++) {
             if (Math.hypot(mx - verts[i][0], my - verts[i][1]) <= HIT_RADIUS) return `v${i}`;
         }
+        if (pointInScreenPoly(mx, my, verts)) return 'center';
     }
     return null;
 }
@@ -217,11 +217,11 @@ export function onDragViewport(e, inst, rect) {
     const p  = inst.params;
 
     if (state.handle === 'center') {
-        // Text body drag keeps a grab offset (state.dragAnchor); other shapes' center
-        // handle snaps directly under the cursor.
-        const a = state.dragAnchor;
-        const tx = a ? mx + a.grabDX : mx;
-        const ty = a ? my + a.grabDY : my;
+        // Grab anywhere inside the shape and drag it with a grab offset so it doesn't
+        // jump under the cursor.
+        const cx = (0.5 + p.vpX / 100) * W;
+        const cy = (0.5 - p.vpY / 100) * H;
+        const [tx, ty] = applyGrab(cx, cy, mx, my);
         setInstanceParam(state.instId, 'vpX', Math.round(Math.max(-50, Math.min(50,  (tx / W - 0.5) * 100))));
         setInstanceParam(state.instId, 'vpY', Math.round(Math.max(-50, Math.min(50, -(ty / H - 0.5) * 100))));
     } else if (state.handle === 'tl' || state.handle === 'tr' || state.handle === 'br' || state.handle === 'bl') {

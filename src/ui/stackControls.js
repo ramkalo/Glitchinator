@@ -1847,6 +1847,67 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         return buildPaletteSwatchControl(inst, key, schema, { onRebuild });
     }
 
+    // Line Drag direction → a row of flat arrow buttons.
+    if (key === 'lineDragDir') {
+        const group = document.createElement('div');
+        group.className = 'control-group';
+        const row = document.createElement('div');
+        row.className = 'control-row';
+        row.style.gap = '6px';
+
+        const labelEl = document.createElement('span');
+        labelEl.className = 'control-label';
+        labelEl.textContent = label;
+
+        const btnRow = document.createElement('div');
+        btnRow.style.cssText = 'display:flex;gap:4px;';
+
+        const arrowPaths = {
+            down:  'M8 3 V11 M4 8 L8 12 L12 8',
+            up:    'M8 13 V5 M4 8 L8 4 L12 8',
+            right: 'M3 8 H11 M8 4 L12 8 L8 12',
+            left:  'M13 8 H5 M8 4 L4 8 L8 12',
+        };
+        const dirIcon = (val) =>
+            `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">` +
+            `<path d="${arrowPaths[val] || ''}" stroke="currentColor" stroke-width="1.6" ` +
+            `stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+        const buttons = [];
+        const paintDir = () => {
+            for (const b of buttons) b.classList.toggle('btn-primary', b.dataset.val === inst.params.lineDragDir);
+        };
+        for (const [val, text] of schema.options) {
+            const b = document.createElement('button');
+            b.className = 'btn';
+            b.style.cssText = 'padding:4px 8px;display:flex;align-items:center;';
+            b.dataset.val = val;
+            b.title = text;
+            b.innerHTML = dirIcon(val);
+            b.addEventListener('click', () => {
+                saveState();
+                const prevValue = inst.params.lineDragDir;
+                setInstanceParam(inst.id, 'lineDragDir', val);
+                const actionEffect = getEffect(inst.effectName);
+                const action = actionEffect?.paramActions?.lineDragDir;
+                if (action) {
+                    const updates = action(val, inst.params, prevValue);
+                    for (const [k, v] of Object.entries(updates)) setInstanceParam(inst.id, k, v);
+                }
+                paintDir();
+                if (onRebuild) onRebuild();
+            });
+            buttons.push(b);
+            btnRow.appendChild(b);
+        }
+        paintDir();
+
+        row.appendChild(labelEl);
+        row.appendChild(btnRow);
+        group.appendChild(row);
+        return group;
+    }
+
     // Enum → select
     if (schema.options) {
         const group = document.createElement('div');

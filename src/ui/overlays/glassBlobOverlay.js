@@ -82,8 +82,6 @@ export function drawGlassBlob(p) {
     uiCtx.lineWidth = 2;
     uiCtx.strokeText('Light', lx + 10, ly - 8);
     uiCtx.fillText('Light', lx + 10, ly - 8);
-
-    drawHandle(g.cx, g.cy);
 }
 
 export function hitTestGlassBlob(e) {
@@ -116,7 +114,13 @@ export function hitTestGlassBlob(e) {
     if (Math.hypot(mx - rot[0],   my - rot[1])   <= HIT_RADIUS) return 'rot';
     if (Math.hypot(mx - edgeW[0], my - edgeW[1]) <= HIT_RADIUS) return 'edgeW';
     if (Math.hypot(mx - edgeH[0], my - edgeH[1]) <= HIT_RADIUS) return 'edgeH';
-    if (Math.hypot(mx - g.cx,     my - g.cy)     <= HIT_RADIUS) return 'center';
+
+    // Grab anywhere inside the irregular blob to move it (exact to the drawn outline).
+    const ox = (mx - g.cx) / g.h, oy = -(my - g.cy) / g.h;
+    const blx =  ox * g.ca + oy * g.sa;
+    const bly = -ox * g.sa + oy * g.ca;
+    const u = blx / g.ex, v = bly / g.ey;
+    if (Math.hypot(u, v) <= radiusAt(Math.atan2(v, u), p.glassBlobSeed, p.glassBlobIrregular)) return 'center';
 
     // Grabbing anywhere inside the fade region moves it — checked last so the blob
     // handles sitting on top still win.

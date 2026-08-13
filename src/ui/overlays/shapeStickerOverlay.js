@@ -1,7 +1,7 @@
 import { canvas } from '../../renderer/glstate.js';
 import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
-import { uiCtx, uiOverlay, syncSize, drawRotHandle, drawCornerHandle, HIT_RADIUS, applyGrab, isInsideFadeShape } from '../overlayUtils.js';
+import { uiCtx, uiOverlay, syncSize, drawRotHandle, drawCornerHandle, drawDiamond, HIT_RADIUS, applyGrab, isInsideFadeShape } from '../overlayUtils.js';
 import { drawFadeShape, getFadeHandlePositions, hitTestFadeVertices, isInsideFade, pointInScreenPoly } from './fadeOverlay.js';
 
 function ssVertexScreenPositions(p) {
@@ -185,39 +185,15 @@ export function drawShapeSticker(p) {
         uiCtx.lineWidth   = 1;
         uiCtx.stroke();
 
-        const drawYelCircle = (hx, hy) => {
-            uiCtx.beginPath();
-            uiCtx.arc(hx, hy, 6, 0, Math.PI * 2);
-            uiCtx.fillStyle   = 'rgba(255,220,0,0.92)';
-            uiCtx.shadowColor = 'rgba(0,0,0,0.55)';
-            uiCtx.shadowBlur  = 4;
-            uiCtx.fill();
-            uiCtx.shadowBlur  = 0;
-            uiCtx.strokeStyle = 'rgba(0,0,0,0.4)';
-            uiCtx.lineWidth   = 1.5;
-            uiCtx.stroke();
-        };
-        const drawYelSquare = (hx, hy) => {
-            const s = 5;
-            uiCtx.save();
-            uiCtx.translate(hx, hy);
-            uiCtx.shadowColor = 'rgba(0,0,0,0.55)';
-            uiCtx.shadowBlur  = 4;
-            uiCtx.fillStyle   = 'rgba(255,220,0,0.92)';
-            uiCtx.fillRect(-s, -s, s * 2, s * 2);
-            uiCtx.shadowBlur  = 0;
-            uiCtx.strokeStyle = 'rgba(0,0,0,0.4)';
-            uiCtx.lineWidth   = 1.5;
-            uiCtx.strokeRect(-s, -s, s * 2, s * 2);
-            uiCtx.restore();
-        };
+        // Grab-box handles: yellow flat diamonds (hue distinguishes them from the sticker's).
+        const drawYel = (hx, hy) => drawDiamond(hx, hy, { fill: 'rgba(255,220,0,0.92)' });
 
-        drawYelCircle(gHandles.center[0], gHandles.center[1]);
-        drawYelSquare(gHandles.tl[0],     gHandles.tl[1]);
-        drawYelSquare(gHandles.tr[0],     gHandles.tr[1]);
-        drawYelSquare(gHandles.br[0],     gHandles.br[1]);
-        drawYelSquare(gHandles.bl[0],     gHandles.bl[1]);
-        drawYelCircle(gHandles.rot[0],    gHandles.rot[1]);
+        drawYel(gHandles.center[0], gHandles.center[1]);
+        drawYel(gHandles.tl[0],     gHandles.tl[1]);
+        drawYel(gHandles.tr[0],     gHandles.tr[1]);
+        drawYel(gHandles.br[0],     gHandles.br[1]);
+        drawYel(gHandles.bl[0],     gHandles.bl[1]);
+        drawYel(gHandles.rot[0],    gHandles.rot[1]);
     }
 
     // Fade shape + handles (shared implementation; guarded on the enabled key).

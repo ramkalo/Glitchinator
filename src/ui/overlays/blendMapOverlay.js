@@ -5,7 +5,7 @@ import {
 } from '../../renderer/glstate.js';
 import { processImageImmediate } from '../../renderer/pipeline.js';
 import { state } from '../overlayState.js';
-import { uiCtx, uiOverlay, syncSize, drawRotHandle, drawCornerHandle, HIT_RADIUS } from '../overlayUtils.js';
+import { uiCtx, uiOverlay, syncSize, drawRotHandle, drawCornerHandle, drawHubHandle, HUB_R, HIT_RADIUS } from '../overlayUtils.js';
 
 const BASE_ARM = 70; // px at zoom=100
 
@@ -45,22 +45,8 @@ export function drawBlendMap() {
     drawRotHandle(rotHx, rotHy);
     drawCornerHandle(scaleHx, scaleHy);
 
-    // Center diamond (position)
-    const S = 9;
-    uiCtx.beginPath();
-    uiCtx.moveTo(cx,     cy - S);
-    uiCtx.lineTo(cx + S, cy);
-    uiCtx.lineTo(cx,     cy + S);
-    uiCtx.lineTo(cx - S, cy);
-    uiCtx.closePath();
-    uiCtx.fillStyle   = 'rgba(255,255,255,0.92)';
-    uiCtx.shadowColor = 'rgba(0,0,0,0.55)';
-    uiCtx.shadowBlur  = 4;
-    uiCtx.fill();
-    uiCtx.shadowBlur  = 0;
-    uiCtx.strokeStyle = 'rgba(0,0,0,0.4)';
-    uiCtx.lineWidth   = 1.5;
-    uiCtx.stroke();
+    // Center hub (position) — dashed circle, grab it to move the whole map
+    drawHubHandle(cx, cy);
 }
 
 export function hitTestBlendMap(e) {
@@ -69,7 +55,7 @@ export function hitTestBlendMap(e) {
     const my = e.clientY - rect.top;
     const { cx, cy, rotHx, rotHy, scaleHx, scaleHy } = _positions();
 
-    if (Math.hypot(mx - cx,     my - cy)     <= HIT_RADIUS) return 'center';
+    if (Math.hypot(mx - cx,     my - cy)     <= HUB_R)      return 'center';
     if (Math.hypot(mx - rotHx,  my - rotHy)  <= HIT_RADIUS) return 'rot';
     if (Math.hypot(mx - scaleHx, my - scaleHy) <= HIT_RADIUS) return 'scale';
     return null;

@@ -1,7 +1,7 @@
 import { canvas } from '../../renderer/glstate.js';
 import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
-import { uiCtx, uiOverlay, syncSize, drawCornerHandle, HIT_RADIUS } from '../overlayUtils.js';
+import { uiCtx, uiOverlay, syncSize, drawCornerHandle, drawDiamond, HIT_RADIUS } from '../overlayUtils.js';
 import { drawFadeShape, getFadeHandlePositions, hitTestFadeVertices, isInsideFade } from './fadeOverlay.js';
 
 const fadeCenterPx = (p, W, H) => [(0.5 + p[state.xKey] / 100) * W, (0.5 - p[state.yKey] / 100) * H];
@@ -39,19 +39,8 @@ export function drawDoubleExposure(p) {
     uiCtx.setLineDash([]);
     drawCornerHandle(scaleHx, scaleHy);
 
-    // Second image position handle — diamond shape drawn on top
-    const S = 9;
-    uiCtx.beginPath();
-    uiCtx.moveTo(imgX,     imgY - S);
-    uiCtx.lineTo(imgX + S, imgY);
-    uiCtx.lineTo(imgX,     imgY + S);
-    uiCtx.lineTo(imgX - S, imgY);
-    uiCtx.closePath();
-    uiCtx.fillStyle   = 'rgba(255,255,255,0.92)';
-    uiCtx.strokeStyle = 'rgba(0,0,0,0.4)';
-    uiCtx.lineWidth   = 1.5;
-    uiCtx.fill();
-    uiCtx.stroke();
+    // Second image position handle — diamond drawn on top
+    drawDiamond(imgX, imgY);
 }
 
 export function hitTestDoubleExposure(e) {

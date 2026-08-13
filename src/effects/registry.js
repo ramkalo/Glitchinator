@@ -261,7 +261,7 @@ export const EFFECT_CATALOG = [
     { name: 'barrelDistortion', label: 'Barrel Distortion',  category: 'Morph',   description: 'Barrel lens distortion' },
     { name: 'smearTwist',    label: 'Smear & Twist',        category: 'Morph',   description: 'Wet paint brush smear with wave-modulated displacement' },
     { name: 'kaleidoscope',  label: 'Kaleidoscope',         category: 'Morph',   description: 'Mirror, radial symmetry, and kaleidoscope modes with drag handles' },
-    { name: 'lineDrag',      label: 'Line Drag',            category: 'Morph',   description: 'Smear pixel columns or rows from a control line across the image' },
+    { name: 'lineDrag',      label: 'Line Drag',            category: 'Morph',   description: 'Smear pixel columns or rows from a control line — parallel, converging, or diverging' },
     { name: 'lineGlitch',     label: 'Line Glitch',          category: 'Morph',   description: 'Tracking line glitch bands' },
     { name: 'doubleExposure', label: 'Double Exposure',      category: 'Morph',   description: 'Blend two images together' },
     { name: 'filmSoup',      label: 'Film Soup',            category: 'Morph',   description: 'Bubble/foam holes that melt through the effects above the melt point' },

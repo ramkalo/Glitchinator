@@ -1,7 +1,7 @@
 import { canvas } from '../../renderer/glstate.js';
 import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
-import { uiCtx, uiOverlay, syncSize, drawHandle, drawCornerHandle, HIT_RADIUS } from '../overlayUtils.js';
+import { uiCtx, uiOverlay, syncSize, drawHubHandle, HUB_R, drawCornerHandle, HIT_RADIUS } from '../overlayUtils.js';
 import { drawFadeFromState, hitTestFadeHandles, hitTestFadeRegion } from './fadeOverlay.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -39,8 +39,8 @@ export function drawDigitalSmear(p) {
         drawCornerHandle(nx, ny);
     }
 
-    // Draw center handle (circle with crosshair) on top
-    drawHandle(cx, cy);
+    // Draw center hub (dashed circle) on top — grab it to move the whole smear
+    drawHubHandle(cx, cy);
 }
 
 export function hitTestDigitalSmear(e) {
@@ -57,7 +57,7 @@ export function hitTestDigitalSmear(e) {
 
     const cx = (p.smearTwistCenterX ?? 50) / 100 * W;
     const cy = (p.smearTwistCenterY ?? 50) / 100 * H;
-    if (Math.hypot(mx - cx, my - cy) <= HIT_RADIUS) return 'center';
+    if (Math.hypot(mx - cx, my - cy) <= HUB_R) return 'center';
 
     const count = p.smearTwistNodeCount ?? 0;
     for (let i = 0; i < count; i++) {

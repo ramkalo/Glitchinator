@@ -6,6 +6,7 @@ export const uiOverlay = document.getElementById('uiOverlay');
 export const uiCtx     = uiOverlay.getContext('2d');
 
 export const HIT_RADIUS = 18;
+export const HUB_R      = 14;   // small dashed centerpoint hub (screen px)
 
 // Grab-offset dragging: on the first drag frame this captures the offset between the
 // object's current center (cx,cy, screen px) and the cursor (mx,my), then returns the
@@ -29,29 +30,17 @@ export function clear() {
     uiCtx.clearRect(0, 0, uiOverlay.width, uiOverlay.height);
 }
 
-export function drawHandle(cx, cy) {
+// Flat diamond knob — the on-canvas match to the UI slider thumb (a 45°-rotated square).
+// White fill + drop shadow + thin dark outline so it reads over any image. `fill`
+// override lets color-coded overlays (e.g. shapeSticker yellow) keep their hue.
+export function drawDiamond(cx, cy, { size = 8, fill = 'rgba(255,255,255,0.92)' } = {}) {
     uiCtx.beginPath();
-    uiCtx.arc(cx, cy, 7, 0, Math.PI * 2);
-    uiCtx.fillStyle   = 'rgba(255,255,255,0.92)';
-    uiCtx.shadowColor = 'rgba(0,0,0,0.55)';
-    uiCtx.shadowBlur  = 4;
-    uiCtx.fill();
-    uiCtx.shadowBlur  = 0;
-    uiCtx.strokeStyle = 'rgba(0,0,0,0.4)';
-    uiCtx.lineWidth   = 1.5;
-    uiCtx.stroke();
-    uiCtx.strokeStyle = 'rgba(255,255,255,0.75)';
-    uiCtx.lineWidth   = 1;
-    uiCtx.beginPath();
-    uiCtx.moveTo(cx - 12, cy); uiCtx.lineTo(cx + 12, cy);
-    uiCtx.moveTo(cx, cy - 12); uiCtx.lineTo(cx, cy + 12);
-    uiCtx.stroke();
-}
-
-export function drawRotHandle(cx, cy) {
-    uiCtx.beginPath();
-    uiCtx.arc(cx, cy, 6, 0, Math.PI * 2);
-    uiCtx.fillStyle   = 'rgba(255,255,255,0.92)';
+    uiCtx.moveTo(cx, cy - size);
+    uiCtx.lineTo(cx + size, cy);
+    uiCtx.lineTo(cx, cy + size);
+    uiCtx.lineTo(cx - size, cy);
+    uiCtx.closePath();
+    uiCtx.fillStyle   = fill;
     uiCtx.shadowColor = 'rgba(0,0,0,0.55)';
     uiCtx.shadowBlur  = 4;
     uiCtx.fill();
@@ -61,20 +50,19 @@ export function drawRotHandle(cx, cy) {
     uiCtx.stroke();
 }
 
-export function drawCornerHandle(cx, cy) {
-    const s = 5;
-    uiCtx.save();
-    uiCtx.translate(cx, cy);
-    uiCtx.shadowColor = 'rgba(0,0,0,0.55)';
-    uiCtx.shadowBlur  = 4;
-    uiCtx.fillStyle   = 'rgba(255,255,255,0.92)';
-    uiCtx.fillRect(-s, -s, s * 2, s * 2);
-    uiCtx.shadowBlur  = 0;
-    uiCtx.strokeStyle = 'rgba(0,0,0,0.4)';
-    uiCtx.lineWidth   = 1.5;
-    uiCtx.strokeRect(-s, -s, s * 2, s * 2);
-    uiCtx.restore();
+// Small dashed centerpoint hub — the "move the whole thing" origin marker used by
+// full-frame effects (matches the concentric-gradient hub style). Grabbed within HUB_R.
+export function drawHubHandle(cx, cy, r = HUB_R) {
+    uiCtx.beginPath();
+    uiCtx.arc(cx, cy, r, 0, Math.PI * 2);
+    strokeAntLine();
 }
+
+// The generic move/point, rotation, and resize/corner handles are all the flat diamond now.
+// Kept as distinct named wrappers so call sites and hit-test code stay readable.
+export function drawHandle(cx, cy)       { drawDiamond(cx, cy); }
+export function drawRotHandle(cx, cy)    { drawDiamond(cx, cy); }
+export function drawCornerHandle(cx, cy) { drawDiamond(cx, cy); }
 
 // Returns the screen-pixel center of the active overlay, or null.
 export function getCentre() {
