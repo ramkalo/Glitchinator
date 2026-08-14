@@ -8,6 +8,7 @@ import {
 import { getEffect } from '../effects/registry.js';
 import { isCropPreviewActive } from '../state/cropPreview.js';
 import { buildBlendControl, buildFadeControl } from '../effects/controls/index.js';
+import { clearAllCutCaptures } from '../effects/cutCapture.js';
 
 // Coordinate system: UNPACK_FLIP_Y_WEBGL=true on image uploads, no Y flip in vertex shader.
 // vUV = (0,0) at screen/image bottom-left, (1,1) at screen/image top-right.
@@ -575,6 +576,9 @@ function _precomputeInternalTextures(stack) {
 }
 
 function _runEffects(stack) {
+    // Fresh capture registry each frame so a Paste is only fed by a Cut that ran earlier in the
+    // pass (enforces Cut-above-Paste, blocks feedback). Cut layers repopulate during the walk.
+    clearAllCutCaptures();
     _precomputeInternalTextures(stack);
 
     // Which markers must be snapshotted = the entry markers of enabled reveal effects

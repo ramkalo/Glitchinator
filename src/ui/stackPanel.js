@@ -7,7 +7,7 @@ import { buildEffectBody, labelPreviewText } from './stackControls.js';
 import { blitOriginalToScreen } from '../renderer/webgl.js';
 import { processImageImmediate } from '../renderer/pipeline.js';
 import { originalImage } from '../renderer/glstate.js';
-import { showFadeOverlay, hideFadeOverlay, showCropOverlay, hideCropOverlay, showViewportOverlay, hideViewportOverlay, showMatrixRainOverlay, hideMatrixRainOverlay, showLineDragOverlay, hideLineDragOverlay, showChromaOverlay, hideChromaOverlay, showVignetteOverlay, hideVignetteOverlay, showCorruptedOverlay, hideCorruptedOverlay, showGhostmarkOverlay, hideGhostmarkOverlay, showCRTCurvatureOverlay, hideCRTCurvatureOverlay, showRotateOverlay, hideRotateOverlay, showTiltOverlay, hideTiltOverlay, showTextOverlay, hideTextOverlay, showDoubleExposureOverlay, hideDoubleExposureOverlay, showShapeStickerOverlay, hideShapeStickerOverlay, showKaleidoscopeOverlay, hideKaleidoscopeOverlay, showDigitalSmearOverlay, hideDigitalSmearOverlay, showDrawToolOverlay, hideDrawToolOverlay, showMeshOverlay, hideMeshOverlay, showTunnelOverlay, hideTunnelOverlay, showFilmSoupOverlay, hideFilmSoupOverlay, showColorGelOverlay, hideColorGelOverlay, showHalftoneOverlay, hideHalftoneOverlay, showWrinkleOverlay, hideWrinkleOverlay, showCausticsOverlay, hideCausticsOverlay, showResinOverlay, hideResinOverlay, showGlassBlobOverlay, hideGlassBlobOverlay, showCutOverlay, hideCutOverlay, showQROverlay, hideQROverlay, showCollageOverlay, hideCollageOverlay } from './canvasPicker.js';
+import { showFadeOverlay, hideFadeOverlay, showCropOverlay, hideCropOverlay, showViewportOverlay, hideViewportOverlay, showMatrixRainOverlay, hideMatrixRainOverlay, showLineDragOverlay, hideLineDragOverlay, showChromaOverlay, hideChromaOverlay, showVignetteOverlay, hideVignetteOverlay, showCorruptedOverlay, hideCorruptedOverlay, showGhostmarkOverlay, hideGhostmarkOverlay, showCRTCurvatureOverlay, hideCRTCurvatureOverlay, showRotateOverlay, hideRotateOverlay, showTiltOverlay, hideTiltOverlay, showTextOverlay, hideTextOverlay, showDoubleExposureOverlay, hideDoubleExposureOverlay, showShapeStickerOverlay, hideShapeStickerOverlay, showKaleidoscopeOverlay, hideKaleidoscopeOverlay, showDigitalSmearOverlay, hideDigitalSmearOverlay, showDrawToolOverlay, hideDrawToolOverlay, showMeshOverlay, hideMeshOverlay, showTunnelOverlay, hideTunnelOverlay, showFilmSoupOverlay, hideFilmSoupOverlay, showColorGelOverlay, hideColorGelOverlay, showHalftoneOverlay, hideHalftoneOverlay, showWrinkleOverlay, hideWrinkleOverlay, showCausticsOverlay, hideCausticsOverlay, showResinOverlay, hideResinOverlay, showGlassBlobOverlay, hideGlassBlobOverlay, showCutOverlay, hideCutOverlay, showPasteOverlay, hidePasteOverlay, showQROverlay, hideQROverlay, showCollageOverlay, hideCollageOverlay } from './canvasPicker.js';
 
 let _expandedId = null;
 
@@ -188,16 +188,26 @@ export function renderStackList() {
 
     // Pair each reveal effect (viewport, filmSoup) with its marker so both show the same
     // number regardless of stack position — e.g. "Film Soup (2)" ↔ "Film Soup Melt Point (2)".
-    const ownerNumberByInstId  = {};  // reveal-owner instId  → its number
-    const ownerNumberByMarkerId = {}; // paired marker instId → owner's number
+    const ownerNumberByInstId  = {};  // reveal/pair owner instId → its number
+    const ownerNumberByMarkerId = {}; // paired marker/partner instId → owner's number
     const ownerRunningCount = {};
     for (const inst of stack) {
         const rc = getEffect(inst.effectName)?.reveal;
-        if (!rc) continue;
-        const n = (ownerRunningCount[inst.effectName] = (ownerRunningCount[inst.effectName] || 0) + 1);
-        ownerNumberByInstId[inst.id] = n;
-        const entryId = inst.params[rc.entryIdKey];
-        if (entryId) ownerNumberByMarkerId[entryId] = n;
+        if (rc) {
+            const n = (ownerRunningCount[inst.effectName] = (ownerRunningCount[inst.effectName] || 0) + 1);
+            ownerNumberByInstId[inst.id] = n;
+            const entryId = inst.params[rc.entryIdKey];
+            if (entryId) ownerNumberByMarkerId[entryId] = n;
+            continue;
+        }
+        // autoPair owners (cut) number together with their partner (paste).
+        const ap = getEffect(inst.effectName)?.autoPair;
+        if (ap) {
+            const n = (ownerRunningCount[inst.effectName] = (ownerRunningCount[inst.effectName] || 0) + 1);
+            ownerNumberByInstId[inst.id] = n;
+            const partnerId = inst.params[ap.partnerIdKey];
+            if (partnerId) ownerNumberByMarkerId[partnerId] = n;
+        }
     }
 
     for (let i = 0; i < stack.length; i++) {
@@ -206,7 +216,9 @@ export function renderStackList() {
 
         const effect = getEffect(inst.effectName);
         const entry = EFFECT_CATALOG.find(e => e.name === inst.effectName);
-        const baseLabel = entry ? entry.label : (effect?.label ?? inst.effectName);
+        // The Cut Out pair reads as connected rows; the catalog keeps the "Cut Out" name.
+        const PAIR_LABELS = { cut: 'Cut', paste: 'Paste' };
+        const baseLabel = PAIR_LABELS[inst.effectName] ?? (entry ? entry.label : (effect?.label ?? inst.effectName));
         // Reveal owners + their markers number by owner pairing; everything else by position.
         const pairedNum = ownerNumberByMarkerId[inst.id] ?? ownerNumberByInstId[inst.id];
         let label = baseLabel;
@@ -220,7 +232,8 @@ export function renderStackList() {
 
         const item = document.createElement('div');
         const isViewportItem = inst.effectName === 'viewport' || inst.effectName === 'viewportEntry'
-            || inst.effectName === 'doubleExposureEntry';
+            || inst.effectName === 'doubleExposureEntry'
+            || inst.effectName === 'cut' || inst.effectName === 'paste';
         item.className = 'stack-item' + (isViewportItem ? ' stack-item--viewport' : '');
         item.dataset.id = inst.id;
         item.dataset.index = i;
@@ -397,6 +410,7 @@ export function renderStackList() {
     if (newEffect !== 'resin')          hideResinOverlay();
     if (newEffect !== 'glassBlob')      hideGlassBlobOverlay();
     if (newEffect !== 'cut')            hideCutOverlay();
+    if (newEffect !== 'paste')          hidePasteOverlay();
     if (newEffect !== 'qr')             hideQROverlay();
     if (newEffect !== 'collage')        hideCollageOverlay();
 
@@ -436,6 +450,7 @@ export function renderStackList() {
     else if (newEffect === 'resin')         showResinOverlay(expandedInst);
     else if (newEffect === 'glassBlob')     showGlassBlobOverlay(expandedInst);
     else if (newEffect === 'cut')           showCutOverlay(expandedInst);
+    else if (newEffect === 'paste')         showPasteOverlay(expandedInst);
     else if (newEffect === 'qr')            showQROverlay(expandedInst);
     else if (newEffect === 'collage')       showCollageOverlay(expandedInst);
 

@@ -2,6 +2,7 @@ import { canvas } from '../../renderer/glstate.js';
 import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
 import { uiCtx, uiOverlay, syncSize, drawRotHandle, HIT_RADIUS } from '../overlayUtils.js';
+import { drawFadeFromState, hitTestFadeHandles, hitTestFadeRegion } from './fadeOverlay.js';
 
 // Single free-drag handle: horizontal offset → tilt Y, vertical offset → tilt X.
 function geom(p, W, H) {
@@ -47,6 +48,8 @@ export function drawTilt(p) {
     uiCtx.strokeText(label, g.cx, g.cy - 16);
     uiCtx.fillStyle = 'rgba(255,255,255,0.95)';
     uiCtx.fillText(label, g.cx, g.cy - 16);
+
+    drawFadeFromState(p, W, H);   // fade shape + handles, when enabled
 }
 
 export function hitTestTilt(e) {
@@ -54,8 +57,13 @@ export function hitTestTilt(e) {
     if (!inst) return null;
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-    const g = geom(inst.params, uiOverlay.width, uiOverlay.height);
-    return Math.hypot(mx - g.hx, my - g.hy) <= HIT_RADIUS ? 'tilt' : null;
+    const W = uiOverlay.width, H = uiOverlay.height;
+    // Fade handles win over the tilt handle; the fade region grab loses to it.
+    const fadeHandle = hitTestFadeHandles(inst.params, mx, my, W, H);
+    if (fadeHandle) return fadeHandle;
+    const g = geom(inst.params, W, H);
+    if (Math.hypot(mx - g.hx, my - g.hy) <= HIT_RADIUS) return 'tilt';
+    return hitTestFadeRegion(inst.params, mx, my, W, H);
 }
 
 export function onDragTilt(e, inst, rect) {

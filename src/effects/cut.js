@@ -1,99 +1,82 @@
-// Self-contained Cut & Paste tool.
-//   Pre-cut: the overlay shows the selection shape (handles in cutOverlay.js).
-//   Cut:     performCut() saves the pixels under the shape into THIS instance
-//            (cutImage) and locks the selection.
-//   Post-cut: renders — optionally erasing the original region (cutErase), then
-//            drawing every pasted copy (cutPastes) at its transform.
+// Cut layer — the "cut" half of the Cut Out pair.
+//   The overlay shows the selection shape (handles in cutOverlay.js): position, size, rotate.
+//   Every render, canvas2d captures the LIVE pixels under the shape (at this layer's position in
+//   the stack) into the shared cut-capture registry, keyed by this instance id. The linked Paste
+//   layer reads that capture the same pass. Optionally it also punches a real hole (cutErase).
 //
-// Rendered via the legacy context path (no blendPrefix): canvas2d receives the
-// current pipeline state preloaded, so `destination-out` can punch a real hole.
+// Because the capture is live, moving this layer in the stack — or editing its shape — changes what
+// the Paste shows. Rendered via the legacy context path (no blendPrefix) so `destination-out` can
+// punch a real hole. Adding "Cut Out" inserts this layer plus a connected Paste layer (autoPair).
 
-import { canvas } from '../renderer/glstate.js';
 import { shapeGeometry, traceShapePath } from './cutShape.js';
-
-export function pasteCount(p) {
-    try { return JSON.parse(p.cutPastes || '[]').length; } catch { return 0; }
-}
-
-// Decoded-image cache keyed by the cutout data URL (canvas2d runs every frame).
-const _imgCache = new Map();
-function _cutoutImage(dataUrl) {
-    if (!dataUrl) return null;
-    let entry = _imgCache.get(dataUrl);
-    if (!entry) {
-        entry = { img: new Image(), ready: false };
-        entry.img.onload = () => {
-            entry.ready = true;
-            // Re-render once decoded. Lazy import dodges the registry import cycle.
-            import('../renderer/pipeline.js').then(m => m.processImageImmediate());
-        };
-        entry.img.src = dataUrl;
-        _imgCache.set(dataUrl, entry);
-    }
-    return entry.ready ? entry.img : null;
-}
+import { setCutCapture } from './cutCapture.js';
 
 function applyCut(ctx, p) {
-    const w = canvas.width, h = canvas.height;
+    const w = ctx.canvas.width, h = ctx.canvas.height;   // overlayCanvas holds the live composite
+    const g = shapeGeometry(p, w, h);
 
-    // True cut: remove the saved region from the current image.
+    // Live capture: clip the shape region from the current pipeline state into a stash. Read
+    // BEFORE any erase so the captured pixels are the region, not a hole.
+    const bx0 = Math.max(0, Math.floor(g.bbox[0]));
+    const by0 = Math.max(0, Math.floor(g.bbox[1]));
+    const bx1 = Math.min(w, Math.ceil(g.bbox[2]));
+    const by1 = Math.min(h, Math.ceil(g.bbox[3]));
+    const cw = bx1 - bx0, ch = by1 - by0;
+    if (cw >= 1 && ch >= 1 && p._instanceId) {
+        const cap  = document.createElement('canvas');
+        cap.width  = cw; cap.height = ch;
+        const cctx = cap.getContext('2d');
+        cctx.save();
+        cctx.translate(-bx0, -by0);
+        traceShapePath(cctx, g);
+        cctx.clip();
+        cctx.drawImage(ctx.canvas, 0, 0);
+        cctx.restore();
+        setCutCapture(p._instanceId, { canvas: cap, natW: cw, natH: ch });
+    }
+
+    // True cut: remove the region from the current image at this layer's position.
     if (p.cutErase) {
         ctx.save();
         ctx.globalCompositeOperation = 'destination-out';
-        traceShapePath(ctx, shapeGeometry(p, w, h));
+        traceShapePath(ctx, g);
         ctx.fillStyle = '#000';
         ctx.fill();
-        ctx.restore();
-    }
-
-    const img = _cutoutImage(p.cutImage);
-    if (!img) return;
-    const natW = p.cutNatW || img.width;
-    const natH = p.cutNatH || img.height;
-
-    let pastes;
-    try { pastes = JSON.parse(p.cutPastes || '[]'); } catch { return; }
-    for (const t of pastes) {
-        const scale = (t.scale ?? 100) / 100;
-        const dw = natW * scale, dh = natH * scale;
-        const cx = (0.5 + (t.x ?? 0) / 100) * w;
-        const cy = (0.5 - (t.y ?? 0) / 100) * h;
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate((t.rot ?? 0) * Math.PI / 180);
-        ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
         ctx.restore();
     }
 }
 
 export const cutEffect = {
     name:  'cut',
-    label: 'Cut Out',
+    label: 'Cut',
     kind:  'context',
+    autoPair: {
+        partnerEffectName: 'paste',
+        partnerIdKey:      'cutPasteId',   // stored on this (owner) instance
+        backIdKey:         'pasteCutId',   // stored on the partner instance
+        position:          'after',
+    },
     handleParams: [
-        'cutX', 'cutY', 'cutW', 'cutH',
+        'cutX', 'cutY', 'cutW', 'cutH', 'cutRot',
         ...Array.from({ length: 12 }, (_, i) => [`cutV${i}x`, `cutV${i}y`]).flat(),
     ],
     params: {
+        cutEnabled: { default: true, label: 'Enable' },   // first, so the header checkbox binds it
         cutShape: { default: 'rectangle', label: 'Shape', options: [['rectangle', 'Rectangle'], ['ellipse', 'Ellipse'], ['triangle', 'Triangle'], ['polygon', 'Polygon']] },
         cutSides: { default: 6, min: 3, max: 12, label: 'Sides' },
         cutErase: { default: false, label: 'Erase original (cut, not copy)' },
-        cutX: { default: 0 },
-        cutY: { default: 0 },
-        cutW: { default: 30 },
-        cutH: { default: 20 },
+        cutX:   { default: 0 },
+        cutY:   { default: 0 },
+        cutW:   { default: 30 },
+        cutH:   { default: 20 },
+        cutRot: { default: 0 },
         ...Array.from({ length: 12 }, (_, i) => ({
             [`cutV${i}x`]: { default: 0 },
             [`cutV${i}y`]: { default: 0 },
         })).reduce((acc, o) => ({ ...acc, ...o }), {}),
-        cutImage:  { default: '', hidden: true },
-        cutNatW:   { default: 0,  hidden: true },
-        cutNatH:   { default: 0,  hidden: true },
-        cutPastes: { default: '[]', hidden: true },
+        cutPasteId: { default: null, hidden: true },   // linked Paste layer id
     },
-    // Shape controls stay present once cut (the cut block dims them) so the panel
-    // doesn't restructure — only the erase toggle changes nothing on cut.
     uiGroups: (p) => [{ keys: p.cutShape === 'polygon' ? ['cutShape', 'cutSides', 'cutErase'] : ['cutShape', 'cutErase'] }],
-    enabled: (p) => !!p.cutImage && (p.cutErase || pasteCount(p) > 0),
+    enabled: (p) => p.cutEnabled,
     canvas2d: applyCut,
 };

@@ -35,7 +35,7 @@ import { drawWrinkle, hitTestWrinkle, onDragWrinkle, wrinkleRotAnchor, wrinkleCe
 import { drawCaustics, hitTestCaustics, onDragCaustics, causticsRotAnchor } from './overlays/causticsOverlay.js';
 import { drawResin, hitTestResin, onDragResin } from './overlays/resinOverlay.js';
 import { drawGlassBlob, hitTestGlassBlob, onDragGlassBlob } from './overlays/glassBlobOverlay.js';
-import { drawCut, hitTestCut, onDragCut, resetCutVertices } from './overlays/cutOverlay.js';
+import { drawCut, hitTestCut, onDragCut, resetCutVertices, drawPaste, hitTestPaste, onDragPaste } from './overlays/cutOverlay.js';
 import { drawQR, hitTestQR, onDragQR } from './overlays/qrOverlay.js';
 import { drawCollage, hitTestCollage, onDragCollage } from './overlays/collageOverlay.js';
 import { swapCollageImage } from '../effects/collage.js';
@@ -153,6 +153,7 @@ onStackChange((key) => {
         }
         drawCut(p);
     }
+    if (state.mode === 'paste')        drawPaste(inst.params);
 });
 
 // QR generation is async; when it finishes the code's aspect ratio becomes known, so redraw the
@@ -289,7 +290,12 @@ export function hideCRTCurvatureOverlay() {
 }
 
 export function showRotateOverlay(inst) {
-    _activate('rotate', inst, null, null);
+    state.shapeKey   = 'rotateFadeShape';
+    state.wKey       = 'rotateFadeW';
+    state.hKey       = 'rotateFadeH';
+    state.angleKey   = 'rotateFadeAngle';
+    state.enabledKey = 'rotateFadeEnabled';
+    _activate('rotate', inst, 'rotateFadeX', 'rotateFadeY');
     drawRotate(inst.params);
 }
 
@@ -298,7 +304,12 @@ export function hideRotateOverlay() {
 }
 
 export function showTiltOverlay(inst) {
-    _activate('tilt', inst, null, null);
+    state.shapeKey   = 'tiltFadeShape';
+    state.wKey       = 'tiltFadeW';
+    state.hKey       = 'tiltFadeH';
+    state.angleKey   = 'tiltFadeAngle';
+    state.enabledKey = 'tiltFadeEnabled';
+    _activate('tilt', inst, 'tiltFadeX', 'tiltFadeY');
     drawTilt(inst.params);
 }
 
@@ -507,9 +518,9 @@ export function hideGlassBlobOverlay() {
     if (state.mode === 'glassBlob') _hideActive();
 }
 
-// Delete/Backspace removes the selected pasted copy while the Cut overlay is active.
-function _cutKeydown(e) {
-    if (state.mode !== 'cut') return;
+// Delete/Backspace removes the selected pasted copy while the Paste overlay is active.
+function _pasteKeydown(e) {
+    if (state.mode !== 'paste') return;
     if (e.key !== 'Delete' && e.key !== 'Backspace') return;
     const tag = (e.target?.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'textarea' || e.target?.isContentEditable) return;
@@ -518,19 +529,9 @@ function _cutKeydown(e) {
     deleteActivePaste(state.instId);
 }
 
-let _lastCutInstId = null;
-
+// Cut layer → SELECT mode: position / size / rotate the selection shape.
 export function showCutOverlay(inst) {
     _activate('cut', inst, 'cutX', 'cutY');
-    // Reset the selected copy only when opening a different Cut instance; otherwise
-    // keep it (so a fresh Paste stays selected through the panel rebuild). Clamp to
-    // the current copy count.
-    let nPastes = 0;
-    try { nPastes = JSON.parse(inst.params.cutPastes || '[]').length; } catch { /* 0 */ }
-    state.cutActive = (inst.id !== _lastCutInstId) ? -1 : Math.min(state.cutActive, nPastes - 1);
-    _lastCutInstId = inst.id;
-    window.removeEventListener('keydown', _cutKeydown);
-    window.addEventListener('keydown', _cutKeydown);
     const p = inst.params;
     const shape = p.cutShape;
     if (shape === 'triangle' || shape === 'polygon') {
@@ -544,8 +545,32 @@ export function showCutOverlay(inst) {
 }
 
 export function hideCutOverlay() {
-    if (state.mode === 'cut') {
-        window.removeEventListener('keydown', _cutKeydown);
+    if (state.mode === 'cut') _hideActive();
+}
+
+let _lastPasteInstId = null;
+
+// Paste layer → PASTE mode: move / scale / rotate copies, plus the embedded fade region.
+export function showPasteOverlay(inst) {
+    state.shapeKey   = 'pasteFadeShape';
+    state.wKey       = 'pasteFadeW';
+    state.hKey       = 'pasteFadeH';
+    state.angleKey   = 'pasteFadeAngle';
+    state.enabledKey = 'pasteFadeEnabled';
+    _activate('paste', inst, 'pasteFadeX', 'pasteFadeY');
+    // Keep the selected copy when reopening the same Paste layer; reset when switching.
+    let nPastes = 0;
+    try { nPastes = JSON.parse(inst.params.cutPastes || '[]').length; } catch { /* 0 */ }
+    state.cutActive = (inst.id !== _lastPasteInstId) ? -1 : Math.min(state.cutActive, nPastes - 1);
+    _lastPasteInstId = inst.id;
+    window.removeEventListener('keydown', _pasteKeydown);
+    window.addEventListener('keydown', _pasteKeydown);
+    drawPaste(inst.params);
+}
+
+export function hidePasteOverlay() {
+    if (state.mode === 'paste') {
+        window.removeEventListener('keydown', _pasteKeydown);
         _hideActive();
     }
 }
@@ -748,6 +773,11 @@ function getCursorForMode(mode, h) {
                 : (h && h.startsWith('v')) ? 'move'
                 : (h === 'edgeR') ? 'ew-resize'
                 : (h === 'edgeB') ? 'ns-resize' : 'default';
+        case 'paste':
+            return (h === 'center' || (h && h.startsWith('body:'))) ? 'grab'
+                : h === 'rot' ? 'crosshair'
+                : (h === 'c0' || h === 'c2' || h === 'scale') ? 'nwse-resize'
+                : (h === 'c1' || h === 'c3') ? 'nesw-resize' : 'default';
         case 'drawTool':
             return 'crosshair';
         case 'collage':
@@ -788,6 +818,7 @@ const HIT_FNS = {
     resin:          hitTestResin,
     glassBlob:      hitTestGlassBlob,
     cut:            hitTestCut,
+    paste:          hitTestPaste,
     collage:        hitTestCollage,
 };
 
@@ -819,6 +850,7 @@ const DRAG_FNS = {
     resin:          onDragResin,
     glassBlob:      onDragGlassBlob,
     cut:            onDragCut,
+    paste:          onDragPaste,
     collage:        onDragCollage,
 };
 
@@ -853,6 +885,7 @@ const DRAW_FNS = {
     resin:          drawResin,
     glassBlob:      drawGlassBlob,
     cut:            drawCut,
+    paste:          drawPaste,
     collage:        drawCollage,
 };
 
@@ -921,25 +954,31 @@ function onDown(e) {
 
     if (!h) return;
 
-    // Cut moves: drag from inside the shape (select) or a copy's body (paste) to
+    // Cut/Paste moves: drag the selection shape body (cut) or a copy's body (paste) to
     // move it, with a grab offset so it doesn't jump under the cursor.
     let handle = h;
-    if (state.mode === 'cut') {
+    if (state.mode === 'cut' && h === 'center') {
         const inst = getStack().find(i => i.id === state.instId);
-        const rect2 = canvas.getBoundingClientRect();
-        const mx = e.clientX - rect2.left, my = e.clientY - rect2.top;
-        const W = uiOverlay.width, H = uiOverlay.height;
-        if (inst && typeof h === 'string' && h.startsWith('body:')) {
+        if (inst) {
+            const rect2 = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect2.left, my = e.clientY - rect2.top;
+            const W = uiOverlay.width, H = uiOverlay.height;
+            const cx = (0.5 + inst.params.cutX / 100) * W, cy = (0.5 - inst.params.cutY / 100) * H;
+            state.dragAnchor = { grabDX: cx - mx, grabDY: cy - my };
+        }
+    } else if (state.mode === 'paste' && typeof h === 'string' && h.startsWith('body:')) {
+        const inst = getStack().find(i => i.id === state.instId);
+        if (inst) {
+            const rect2 = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect2.left, my = e.clientY - rect2.top;
+            const W = uiOverlay.width, H = uiOverlay.height;
             const idx = parseInt(h.slice(5), 10);
             state.cutActive = idx;
             handle = 'center';
-            drawCut(inst.params);
+            drawPaste(inst.params);
             let t = { x: 0, y: 0 };
             try { t = JSON.parse(inst.params.cutPastes || '[]')[idx] || t; } catch { /* default */ }
             const cx = (0.5 + (t.x ?? 0) / 100) * W, cy = (0.5 - (t.y ?? 0) / 100) * H;
-            state.dragAnchor = { grabDX: cx - mx, grabDY: cy - my };
-        } else if (inst && h === 'center') {
-            const cx = (0.5 + inst.params.cutX / 100) * W, cy = (0.5 - inst.params.cutY / 100) * H;
             state.dragAnchor = { grabDX: cx - mx, grabDY: cy - my };
         }
     }

@@ -25,6 +25,7 @@ import { matrixRainEffect }      from './matrixRain.js';
 import { glassBlobEffect }       from './glassBlob.js';
 import { meshEffect }            from './mesh.js';
 import { cutEffect }             from './cut.js';
+import { pasteEffect }           from './paste.js';
 import { collageEffect }         from './collage.js';
 import { slicerEffect }          from './slicer.js';
 import { scanlinesEffect }       from './scanlines.js';
@@ -171,6 +172,7 @@ export const EFFECTS = [
     tunnelEffect,
     glassBlobEffect,
     cutEffect,
+    pasteEffect,
     collageEffect,
     slicerEffect,
     wrinkleEffect,
@@ -281,7 +283,7 @@ export const EFFECT_CATALOG = [
     { name: 'qr',           label: 'QR Code',              category: 'Overlay', description: 'Encode text or a URL as a QR / barcode (Standard & Micro QR, rMQR, Aztec, PDF417, MaxiCode, Han Xin, Barcode, or a Mars-parachute pattern) and blend it in — palette colors, module & overall shapes, size/rotate handles' },
     { name: 'tunnel',       label: 'Tunnel',               category: 'Overlay', description: 'Repeating shapes along a bezier path creating a tunnel illusion' },
     { name: 'glassBlob',    label: 'Glass Blob',           category: 'Overlay', description: 'A single glassy droplet you place, size and shape — refraction, highlight & color' },
-    { name: 'cut',          label: 'Cut Out',              category: 'Overlay', description: 'Cut an ellipse/rectangle/triangle/polygon region out as a movable layer' },
+    { name: 'cut',          label: 'Cut Out',              category: 'Overlay', description: 'Live cut & paste — adds a connected Cut layer (a rotatable ellipse/rectangle/triangle/polygon region captured live from its stack position, optionally erased) and a Paste layer (places blend/fade/skew copies); order both independently' },
     { name: 'wrinkle',      label: 'Wrinkle',              category: 'Overlay', description: 'Cellophane wrap / ripple overlay with refraction and ridge sheen' },
     { name: 'caustics',     label: 'Caustics',             category: 'Overlay', description: 'Underwater light caustics — the bright net of pool-bottom light lines' },
     { name: 'frame',        label: 'Frame',                category: 'Overlay', description: 'Plain polaroid-style border with adjustable width, inner-corner roundness, and color' },

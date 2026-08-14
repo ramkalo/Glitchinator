@@ -1,4 +1,5 @@
 import { EFFECTS, getEffectDefaults, getEffect } from '../effects/registry.js';
+import { clearCutCapture } from '../effects/cutCapture.js';
 
 let _stack = [];
 const _listeners = new Set();
@@ -76,6 +77,22 @@ export function addEffect(effectName) {
         instance.params[autoEntry.entryIdKey] = entryInst.id;
     }
 
+    // Effects that spawn a connected, independently-movable partner (cut → paste) declare
+    // it via `autoPair`. Insert the partner right after the owner, cross-linked by id.
+    const autoPair = effect?.autoPair;
+    if (autoPair) {
+        const partnerInst = {
+            id: _uid(),
+            effectName: autoPair.partnerEffectName,
+            params: { ...(getEffectDefaults(autoPair.partnerEffectName) || {}) },
+        };
+        instance.params[autoPair.partnerIdKey] = partnerInst.id;
+        partnerInst.params[autoPair.backIdKey] = instance.id;
+        _stack.push(instance, partnerInst);
+        _notify();
+        return instance;
+    }
+
     _stack.push(instance);
     _notify();
     return instance;
@@ -83,18 +100,31 @@ export function addEffect(effectName) {
 
 export function removeEffect(id) {
     const inst = _stack.find(i => i.id === id);
+    const toRemove = new Set([id]);
+
     const autoEntry = inst && getEffect(inst.effectName)?.autoEntry;
     if (autoEntry) {
         const entryId = inst.params[autoEntry.entryIdKey];
-        _stack = entryId
-            ? _stack.filter(i => i.id !== entryId)
-            : _stack.filter(i => i.effectName !== autoEntry.entryEffectName);
+        if (entryId) toRemove.add(entryId);
+        else for (const i of _stack) if (i.effectName === autoEntry.entryEffectName) toRemove.add(i.id);
     }
     if (inst?.effectName === 'doubleExposure') {
         const entryId = inst.params.doubleExposureEntryId;
-        if (entryId) _stack = _stack.filter(i => i.id !== entryId);
+        if (entryId) toRemove.add(entryId);
     }
-    _stack = _stack.filter(i => i.id !== id);
+
+    // autoPair partners delete together, in either direction (owner→partner, partner→owner).
+    if (inst) {
+        const ap = getEffect(inst.effectName)?.autoPair;
+        if (ap && inst.params[ap.partnerIdKey]) toRemove.add(inst.params[ap.partnerIdKey]);
+        for (const other of _stack) {
+            const oap = getEffect(other.effectName)?.autoPair;
+            if (oap && other.params[oap.partnerIdKey] === id) toRemove.add(other.id);
+        }
+    }
+
+    for (const rid of toRemove) clearCutCapture(rid);   // drop any live cut capture for removed layers
+    _stack = _stack.filter(i => !toRemove.has(i.id));
     _notify();
 }
 
@@ -120,6 +150,32 @@ export function duplicateEffect(id) {
         copy.params.doubleExposureEntryId = null;
     }
     const idx = _stack.findIndex(i => i.id === id);
+
+    // autoPair owner (cut): duplicate the whole connected pair as a fresh linked pair so the
+    // copy doesn't share the original's Paste layer.
+    const ap = getEffect(copy.effectName)?.autoPair;
+    if (ap) {
+        const partner = _stack.find(i => i.id === inst.params[ap.partnerIdKey]);
+        const partnerCopy = {
+            id: _uid(),
+            effectName: ap.partnerEffectName,
+            params: partner ? { ...partner.params } : { ...(getEffectDefaults(ap.partnerEffectName) || {}) },
+        };
+        copy.params[ap.partnerIdKey] = partnerCopy.id;
+        partnerCopy.params[ap.backIdKey] = copy.id;
+        _stack.splice(idx + 1, 0, copy, partnerCopy);
+        _notify();
+        return copy;
+    }
+
+    // autoPair partner (paste): duplicate just this layer as a standalone (unlinked) copy.
+    const ownerAp = EFFECTS.map(e => e.autoPair).find(a => a && a.partnerEffectName === copy.effectName);
+    if (ownerAp) {
+        copy.params[ownerAp.backIdKey] = null;
+        _stack.splice(idx + 1, 0, copy);
+        _notify();
+        return copy;
+    }
 
     // Effects with a paired marker (viewport → viewportEntry, filmSoup → filmSoupMelt) need
     // their OWN marker for the duplicate — otherwise the copy shares the original's melt point.
@@ -174,6 +230,45 @@ const _RENAMES = [
 ];
 
 function _migrateInstance(inst) {
+    // Legacy single-effect Cut Out → connected Cut + Paste pair. Old cut instances carry the
+    // image/paste data directly and lack the `cutPasteId` link that new cut instances always have.
+    // The capture is now live, so the old baked `cutImage` is discarded — only shape + copy layout
+    // carry over.
+    if (inst.effectName === 'cut' && !('cutPasteId' in (inst.params ?? {}))) {
+        const p = inst.params ?? {};
+        const cutId   = inst.id || _uid();
+        const pasteId = _uid();
+        const vertOffsets = {};
+        for (let i = 0; i < 12; i++) {
+            vertOffsets[`cutV${i}x`] = p[`cutV${i}x`] ?? 0;
+            vertOffsets[`cutV${i}y`] = p[`cutV${i}y`] ?? 0;
+        }
+        const cutInst = {
+            id: cutId, effectName: 'cut',
+            params: {
+                ...getEffectDefaults('cut'),
+                cutShape: p.cutShape ?? 'rectangle',
+                cutSides: p.cutSides ?? 6,
+                cutErase: p.cutErase ?? false,
+                cutX: p.cutX ?? 0, cutY: p.cutY ?? 0,
+                cutW: p.cutW ?? 30, cutH: p.cutH ?? 20,
+                cutRot: p.cutRot ?? 0,
+                ...vertOffsets,
+                cutPasteId: pasteId,
+            },
+        };
+        const pasteInst = {
+            id: pasteId, effectName: 'paste',
+            params: {
+                ...getEffectDefaults('paste'),
+                // Keep old copies if present; otherwise the paste default (one centered copy) stands.
+                ...(p.cutPastes && p.cutPastes !== '[]' ? { cutPastes: p.cutPastes } : {}),
+                pasteCutId: cutId,
+            },
+        };
+        return [cutInst, pasteInst];
+    }
+
     // crtStatic → grain (legacy, with explicit param remap).
     if (inst.effectName === 'crtStatic') {
         const p = inst.params ?? {};
@@ -233,7 +328,10 @@ function _migrateInstance(inst) {
 
 export function restoreStack(snapshot) {
     // Drop instances whose effect no longer exists (e.g. an effect deleted since a preset was
-    // saved) so the stack panel never tries to render a dead effect.
-    _stack = JSON.parse(JSON.stringify(snapshot)).map(_migrateInstance).filter(i => getEffect(i.effectName));
+    // saved) so the stack panel never tries to render a dead effect. _migrateInstance may
+    // expand one legacy instance into several (old single-effect Cut Out → Cut + Paste pair).
+    _stack = JSON.parse(JSON.stringify(snapshot))
+        .flatMap(inst => { const r = _migrateInstance(inst); return Array.isArray(r) ? r : [r]; })
+        .filter(i => getEffect(i.effectName));
     _notify();
 }

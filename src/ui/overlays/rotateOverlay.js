@@ -2,6 +2,7 @@ import { canvas } from '../../renderer/glstate.js';
 import { getStack, setInstanceParam } from '../../state/effectStack.js';
 import { state } from '../overlayState.js';
 import { uiCtx, uiOverlay, syncSize, drawRotHandle, strokeAntLine, HIT_RADIUS } from '../overlayUtils.js';
+import { drawFadeFromState, hitTestFadeHandles, hitTestFadeRegion } from './fadeOverlay.js';
 
 // Handle geometry: center is the frame center, angle 0 = straight up, positive = clockwise.
 function geom(p, W, H) {
@@ -58,6 +59,8 @@ export function drawRotate(p) {
     uiCtx.strokeText(label, g.cx, g.cy);
     uiCtx.fillStyle = 'rgba(255,255,255,0.95)';
     uiCtx.fillText(label, g.cx, g.cy);
+
+    drawFadeFromState(p, W, H);   // fade shape + handles, when enabled
 }
 
 export function hitTestRotate(e) {
@@ -65,8 +68,13 @@ export function hitTestRotate(e) {
     if (!inst) return null;
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-    const g = geom(inst.params, uiOverlay.width, uiOverlay.height);
-    return Math.hypot(mx - g.hx, my - g.hy) <= HIT_RADIUS ? 'rot' : null;
+    const W = uiOverlay.width, H = uiOverlay.height;
+    // Fade handles win over the angle handle; the fade region grab loses to it.
+    const fadeHandle = hitTestFadeHandles(inst.params, mx, my, W, H);
+    if (fadeHandle) return fadeHandle;
+    const g = geom(inst.params, W, H);
+    if (Math.hypot(mx - g.hx, my - g.hy) <= HIT_RADIUS) return 'rot';
+    return hitTestFadeRegion(inst.params, mx, my, W, H);
 }
 
 export function onDragRotate(e, inst, rect) {

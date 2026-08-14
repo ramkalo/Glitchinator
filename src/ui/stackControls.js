@@ -10,7 +10,7 @@ import { blendMapImage, glassMapImage, canvas, originalFileBytes } from '../rend
 import { parseMetadataToFields } from '../util/imageMeta.js';
 import { showNotification } from '../utils/notifications.js';
 import { toggleBlendMapOverlay, hideBlendMapOverlay } from './canvasPicker.js';
-import { performCut, addPaste, clearCut } from './cutTool.js';
+import { addPaste } from './cutTool.js';
 import { buildPaletteSwatchControl, resolveColorKey, getActivePaletteFor } from './controls/paletteColor.js';
 import { buildHueGridControl } from './controls/hueGrid.js';
 import { buildCurveEditorControl } from './controls/curveEditor.js';
@@ -516,43 +516,34 @@ export function buildEffectBody(inst, onRebuild) {
     if (inst.effectName === 'cut') {
         const row = document.createElement('div');
         row.className = 'control-group';
-        row.innerHTML = `<div class="control-row" style="gap:8px;">
-                <button class="btn cut-do-btn" style="flex:1;">Cut</button>
-                <button class="btn cut-new-btn" style="flex:1;">Start Over</button>
-            </div>
-            <div class="control-row" style="margin-top:8px;">
-                <button class="btn btn-primary cut-paste-btn" style="width:100%;">Paste</button>
-            </div>
-            <div class="control-hint cut-hint" style="font-size:0.72rem;color:var(--text-dim);margin-top:6px;transition:opacity .2s;"></div>`;
+        row.innerHTML = `<div class="control-hint" style="font-size:0.72rem;color:var(--text-dim);">
+                This region is captured live from its position in the stack — move this layer up/down
+                to change what the Paste layer shows. Position, size &amp; rotate the shape on the canvas.
+            </div>`;
         content.appendChild(row);
+    }
 
-        const doBtn    = row.querySelector('.cut-do-btn');
-        const newBtn   = row.querySelector('.cut-new-btn');
-        const pasteBtn = row.querySelector('.cut-paste-btn');
-        const hint     = row.querySelector('.cut-hint');
-        // Shape controls fade/disable once a cut is locked, instead of disappearing.
-        const shapeEls = ['cutShape', 'cutSides']
-            .map(k => content.querySelector(`[data-inst-param="${k}"]`)?.closest('.control-group'))
-            .filter(Boolean);
-        for (const el of shapeEls) el.style.transition = 'opacity .2s';
+    if (inst.effectName === 'paste') {
+        const row = document.createElement('div');
+        row.className = 'control-group';
+        row.innerHTML = `<div class="control-row">
+                <button class="btn btn-primary paste-add-btn" style="width:100%;">Paste</button>
+            </div>
+            <div class="control-hint paste-hint" style="font-size:0.72rem;color:var(--text-dim);margin-top:6px;"></div>`;
+        content.insertBefore(row, content.firstChild);
+
+        const addBtn = row.querySelector('.paste-add-btn');
+        const hint   = row.querySelector('.paste-hint');
 
         const update = () => {
             const p = getStack().find(i => i.id === inst.id)?.params ?? inst.params;
-            const hasCut = !!p.cutImage;
             let count = 0; try { count = JSON.parse(p.cutPastes || '[]').length; } catch { /* 0 */ }
-            doBtn.disabled    = hasCut;
-            newBtn.disabled   = !hasCut;
-            pasteBtn.disabled = !hasCut;
-            for (const el of shapeEls) { el.style.opacity = hasCut ? '0.4' : '1'; el.style.pointerEvents = hasCut ? 'none' : ''; }
-            hint.textContent = hasCut
-                ? `${count} cop${count === 1 ? 'y' : 'ies'} placed — click one and press Delete to remove it`
-                : 'Position the shape, then click Cut';
-            hint.style.opacity = hasCut && count === 0 ? '0.6' : '1';
+            hint.textContent = count === 0
+                ? 'Click Paste to place a copy of the live cut region'
+                : `${count} cop${count === 1 ? 'y' : 'ies'} — click one and press Delete to remove it`;
         };
 
-        doBtn.addEventListener('click',    () => { performCut(inst.id); update(); });
-        newBtn.addEventListener('click',   () => { clearCut(inst.id);   update(); });
-        pasteBtn.addEventListener('click', () => { addPaste(inst.id);   update(); });
+        addBtn.addEventListener('click', () => { addPaste(inst.id); update(); });
         update();
     }
 
