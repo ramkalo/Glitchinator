@@ -25,7 +25,7 @@ import { drawViewport,       hitTestViewport,        onDragViewport,      resetP
 import { drawKaleidoscope, hitTestKaleidoscope, onDragKaleidoscope, resetKaleidoscopeVertices } from './overlays/kaleidoscopeOverlay.js';
 import { drawDigitalSmear, hitTestDigitalSmear, onDragDigitalSmear, deleteSmearNode } from './overlays/digitalSmearOverlay.js';
 import { drawBlendMap, hitTestBlendMap, onDragBlendMap } from './overlays/blendMapOverlay.js';
-import { drawDrawTool, hitTestDrawTool, onDragDrawTool, finalizeDrawToolStroke, onDrawToolDown } from './overlays/drawToolOverlay.js';
+import { drawBXTpaint, hitTestBXTpaint, onDragBXTpaint, finalizeBXTpaint, onBXTpaintDown } from './overlays/bxtpaintOverlay.js';
 import { drawMeshOverlay, hitTestMesh, onDragMesh } from './overlays/meshOverlay.js';
 import { drawTunnelOverlay, hitTestTunnel, onDragTunnel } from './overlays/tunnelOverlay.js';
 import { drawFilmSoup, hitTestFilmSoup, onDragFilmSoup, addFilmSoupBubble, deleteFilmSoupBubble, canAddFilmSoupBubble } from './overlays/filmSoupOverlay.js';
@@ -129,7 +129,7 @@ onStackChange((key) => {
     }
     if (state.mode === 'smearTwist') drawDigitalSmear(inst.params);
     if (state.mode === 'filmSoup')     drawFilmSoup(inst.params);
-    if (state.mode === 'drawTool')     drawDrawTool(inst.params);
+    if (state.mode === 'bxtpaint')     drawBXTpaint(inst.params);
     if (state.mode === 'mesh')         drawMeshOverlay(inst.params);
     if (state.mode === 'tunnel')       drawTunnelOverlay(inst.params);
     if (state.mode === 'colorGel')     drawColorGel(inst.params);
@@ -411,13 +411,13 @@ export function hideFilmSoupOverlay() {
     if (state.mode === 'filmSoup') _hideActive();
 }
 
-export function showDrawToolOverlay(inst) {
-    _activate('drawTool', inst, 'drawToolStrokes', 'drawToolStrokes');
-    drawDrawTool(inst.params);
+export function showBXTpaintOverlay(inst) {
+    _activate('bxtpaint', inst, 'bxtpaintOps', 'bxtpaintOps');
+    drawBXTpaint(inst.params);
 }
 
-export function hideDrawToolOverlay() {
-    if (state.mode === 'drawTool') _hideActive();
+export function hideBXTpaintOverlay() {
+    if (state.mode === 'bxtpaint') _hideActive();
 }
 
 export function showMeshOverlay(inst) {
@@ -778,7 +778,7 @@ function getCursorForMode(mode, h) {
                 : h === 'rot' ? 'crosshair'
                 : (h === 'c0' || h === 'c2' || h === 'scale') ? 'nwse-resize'
                 : (h === 'c1' || h === 'c3') ? 'nesw-resize' : 'default';
-        case 'drawTool':
+        case 'bxtpaint':
             return 'crosshair';
         case 'collage':
             return (h && h.startsWith('cell:')) ? 'grab' : 'default';
@@ -794,7 +794,7 @@ const HIT_FNS = {
     caustics:       hitTestCaustics,
     tunnel:         hitTestTunnel,
     mesh:           hitTestMesh,
-    drawTool:       hitTestDrawTool,
+    bxtpaint:       hitTestBXTpaint,
     blendMap:       hitTestBlendMap,
     kaleidoscope:   hitTestKaleidoscope,
     crop:           hitTestCrop,
@@ -829,7 +829,7 @@ const DRAG_FNS = {
     caustics:       onDragCaustics,
     tunnel:         onDragTunnel,
     mesh:           onDragMesh,
-    drawTool:       onDragDrawTool,
+    bxtpaint:       onDragBXTpaint,
     blendMap:       onDragBlendMap,
     kaleidoscope:   onDragKaleidoscope,
     crop:           onDragCrop,
@@ -861,7 +861,7 @@ const DRAW_FNS = {
     caustics:       drawCaustics,
     tunnel:         drawTunnelOverlay,
     mesh:           drawMeshOverlay,
-    drawTool:       drawDrawTool,
+    bxtpaint:       drawBXTpaint,
     blendMap:       drawBlendMap,
     kaleidoscope:   drawKaleidoscope,
     fade:           drawFade,
@@ -1122,9 +1122,9 @@ function onDown(e) {
         };
     }
 
-    if (state.mode === 'drawTool' && state.handle === 'canvas') {
+    if (state.mode === 'bxtpaint' && state.handle === 'canvas') {
         const inst = getStack().find(i => i.id === state.instId);
-        if (inst) onDrawToolDown(e, inst, canvas.getBoundingClientRect());
+        if (inst) onBXTpaintDown(e, inst, canvas.getBoundingClientRect());
     }
 
     if (state.mode === 'mesh') {
@@ -1260,9 +1260,9 @@ function onUp() {
         deleteFilmSoupBubble(instId, inst.params, idx);
     }
 
-    if (mode === 'drawTool') {
+    if (mode === 'bxtpaint') {
         const inst2 = getStack().find(i => i.id === instId);
-        if (inst2) finalizeDrawToolStroke(instId, inst2.params);
+        if (inst2) finalizeBXTpaint(instId, inst2.params);
     }
 
     // Collage: swap the dragged cell with the drop-target cell, then re-render.

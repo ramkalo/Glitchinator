@@ -12,7 +12,7 @@ import { expandEffect }          from './expand.js';
 import { resizeEffect }          from './resize.js';
 import { digitizeEffect }        from './digitize.js';
 import { doubleExposureEffect }  from './doubleExposure.js';
-import { drawToolEffect }        from './drawTool.js';
+import { bxtpaintEffect }        from './bxtpaint.js';
 import { filmSoupEffect }        from './filmSoup.js';
 import { glowEffect }            from './glow.js';
 import { grainEffect }           from './grain.js';
@@ -167,7 +167,7 @@ export const EFFECTS = [
     viewportEntryEffect,
     viewportEffect,
     shapeStickerEffect,
-    drawToolEffect,
+    bxtpaintEffect,
     meshEffect,
     tunnelEffect,
     glassBlobEffect,
@@ -274,7 +274,7 @@ export const EFFECT_CATALOG = [
     // ── Overlay ──
     { name: 'corrupted',     label: 'Corrupted',            category: 'Overlay', description: 'Fractal square corruption spreading from seeded points' },
     { name: 'scanlines',      label: 'Scanlines',            category: 'Overlay', description: 'Horizontal scanline darkening' },
-    { name: 'drawTool',     label: 'Draw',                 category: 'Overlay', description: 'Freehand pen with solid or static fill' },
+    { name: 'bxtpaint',     label: 'BXTpaint',             category: 'Overlay', description: 'MS-Paint-style square-pixel painting: brush, fill, spray, line, curve, shapes, eraser' },
     { name: 'matrixRain',   label: 'Matrix Rain',          category: 'Overlay', description: 'Tile text characters across the image in configurable grid patterns' },
     { name: 'mesh',         label: 'Mesh',                 category: 'Overlay', description: 'Draggable quad grid overlay with configurable line distribution' },
     { name: 'shapeSticker',   label: 'Shape Sticker',         category: 'Overlay', description: 'Apply a shape filled with solid color, static, or image grab' },

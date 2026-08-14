@@ -1256,6 +1256,52 @@ function buildControl(inst, key, schema, onRebuild, labelOverride) {
         return note;
     }
 
+    // Row of icon/label buttons (a segmented picker). Like a <select>, but each option
+    // is its own button — schema.icons?.[value] supplies inline SVG markup, else the label.
+    if (schema.type === 'iconButtons') {
+        const group = document.createElement('div');
+        group.className = 'control-group';
+        if (label) {
+            const labelEl = document.createElement('span');
+            labelEl.className = 'control-label';
+            labelEl.style.cssText = 'display:block;margin-bottom:6px;';
+            labelEl.textContent = label;
+            group.appendChild(labelEl);
+        }
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;';
+        const icons = schema.icons || {};
+        for (const [val, text] of schema.options) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.title = text;
+            btn.dataset.value = val;
+            btn.innerHTML = icons[val] || text;
+            const active = val === currentVal;
+            btn.style.cssText =
+                'display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:7px;' +
+                'border-radius:6px;cursor:pointer;transition:border-color .1s,background .1s;' +
+                `border:1px solid ${active ? 'var(--accent)' : 'var(--border)'};` +
+                `background:${active ? 'var(--accent)' : 'var(--bg-input)'};` +
+                `color:${active ? 'var(--bg-dark)' : 'var(--text)'};`;
+            btn.addEventListener('click', () => {
+                saveState();
+                const prevValue = inst.params[key];
+                setInstanceParam(inst.id, key, val);
+                const actionEffect = getEffect(inst.effectName);
+                const action = actionEffect?.paramActions?.[key];
+                if (action) {
+                    const updates = action(val, inst.params, prevValue);
+                    for (const [k, v] of Object.entries(updates)) setInstanceParam(inst.id, k, v);
+                }
+                if (onRebuild) onRebuild();
+            });
+            row.appendChild(btn);
+        }
+        group.appendChild(row);
+        return group;
+    }
+
     // "Pull From <region>" — sample the palette out of the image reaching this
     // instance. Target mode adds a draggable region box over the canvas.
     if (key === 'paletteFromImage') {
