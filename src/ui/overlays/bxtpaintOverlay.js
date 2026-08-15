@@ -172,12 +172,14 @@ export function onBXTpaintDown(e, inst, rect) {
     switch (tool) {
         case 'brush':
         case 'eraser':
-            _g.op = { type: tool, size, points: [pt] };
+            _g.op = tool === 'eraser'
+                ? { type: 'eraser', size, points: [pt] }
+                : { type: 'brush', size, colorKey, points: [pt] };
             if (tool === 'eraser') _eraserPreview(pt.x, pt.y, size);
             else                   _cellPreview(pt.x, pt.y, size, _previewColor(colorKey));
             break;
         case 'spray':
-            _g.op = { type: 'spray', size, dots: [] };
+            _g.op = { type: 'spray', size, colorKey, dots: [] };
             _spray(inst, pt);
             break;
         // line / rect / ellipse / curve / fill / polygon resolve on drag/up.
@@ -267,16 +269,16 @@ export function finalizeBXTpaint(instId, params) {
             if (g.op && (g.op.points?.length || g.op.dots?.length)) _commit(instId, params, g.op);
             break;
         case 'line':
-            if (_dragged) _commit(instId, params, { type: 'line', size: g.size, x0: g.start.x, y0: g.start.y, x1: g.cur.x, y1: g.cur.y });
+            if (_dragged) _commit(instId, params, { type: 'line', size: g.size, colorKey: g.colorKey, x0: g.start.x, y0: g.start.y, x1: g.cur.x, y1: g.cur.y });
             break;
         case 'rect':
-            if (_dragged) _commit(instId, params, { type: 'rect', size: g.size, fill: params.bxtpaintShapeFill === 'filled', x0: g.start.x, y0: g.start.y, x1: g.cur.x, y1: g.cur.y });
+            if (_dragged) _commit(instId, params, { type: 'rect', size: g.size, colorKey: g.colorKey, fill: params.bxtpaintShapeFill === 'filled', x0: g.start.x, y0: g.start.y, x1: g.cur.x, y1: g.cur.y });
             break;
         case 'ellipse':
-            if (_dragged) _commit(instId, params, { type: 'ellipse', size: g.size, fill: params.bxtpaintShapeFill === 'filled', x0: g.start.x, y0: g.start.y, x1: g.cur.x, y1: g.cur.y });
+            if (_dragged) _commit(instId, params, { type: 'ellipse', size: g.size, colorKey: g.colorKey, fill: params.bxtpaintShapeFill === 'filled', x0: g.start.x, y0: g.start.y, x1: g.cur.x, y1: g.cur.y });
             break;
         case 'fill':
-            _commit(instId, params, { type: 'fill', x: g.start.x, y: g.start.y });
+            _commit(instId, params, { type: 'fill', colorKey: g.colorKey, x: g.start.x, y: g.start.y });
             break;
         case 'curve':
             _finalizeCurve(instId, params, g);
@@ -321,7 +323,7 @@ function _finalizeCurve(instId, params, g) {
     // Stage 2 complete: the last pointer position is the control point.
     const ctrl = _lastPos ?? { x: (_pendingCurve.x0 + _pendingCurve.x1) / 2, y: (_pendingCurve.y0 + _pendingCurve.y1) / 2 };
     _commit(instId, params, {
-        type: 'curve', size: g.size,
+        type: 'curve', size: g.size, colorKey: g.colorKey,
         x0: _pendingCurve.x0, y0: _pendingCurve.y0,
         x1: _pendingCurve.x1, y1: _pendingCurve.y1,
         cx: ctrl.x, cy: ctrl.y,
@@ -336,7 +338,7 @@ function _finalizePolygon(instId, params, g) {
         const first = _polyVerts[0];
         if (Math.hypot(pt.x - first.x, pt.y - first.y) < POLY_CLOSE_DIST) {
             _commit(instId, params, {
-                type: 'polygon', size: g.size,
+                type: 'polygon', size: g.size, colorKey: g.colorKey,
                 fill: params.bxtpaintShapeFill === 'filled',
                 verts: _polyVerts.slice(),
             });

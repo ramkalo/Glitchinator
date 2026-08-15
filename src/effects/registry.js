@@ -274,7 +274,7 @@ export const EFFECT_CATALOG = [
     // ── Overlay ──
     { name: 'corrupted',     label: 'Corrupted',            category: 'Overlay', description: 'Fractal square corruption spreading from seeded points' },
     { name: 'scanlines',      label: 'Scanlines',            category: 'Overlay', description: 'Horizontal scanline darkening' },
-    { name: 'bxtpaint',     label: 'BXTpaint',             category: 'Overlay', description: 'MS-Paint-style square-pixel painting: brush, fill, spray, line, curve, shapes, eraser' },
+    { name: 'bxtpaint',     label: 'BXTpaint',             category: 'Overlay', description: 'Retro-style square-pixel painting: brush, fill, spray, line, curve, shapes, eraser' },
     { name: 'matrixRain',   label: 'Matrix Rain',          category: 'Overlay', description: 'Tile text characters across the image in configurable grid patterns' },
     { name: 'mesh',         label: 'Mesh',                 category: 'Overlay', description: 'Draggable quad grid overlay with configurable line distribution' },
     { name: 'shapeSticker',   label: 'Shape Sticker',         category: 'Overlay', description: 'Apply a shape filled with solid color, static, or image grab' },

@@ -6,9 +6,13 @@ const fade  = buildFadeControl('bxtpaint');
 const blend = buildBlendControl('bxtpaint');
 
 // ── Colour helpers ────────────────────────────────────────────────────────────
-// A BXTpaint instance is monochromatic: every painted pixel uses the instance's
-// current colour, resolved live from p.bxtpaintColor — so changing the colour
-// recolours all existing pixels in the instance.
+// Each op keeps the colour it was drawn with (a palette key resolved live), so one
+// instance can hold many colours and changing the selector only affects new ops.
+
+function opColor(op, activePalette) {
+    if (op.colorKey) return resolveColorKey(op.colorKey, activePalette) || '#000000';
+    return '#000000';
+}
 
 function hexToRGBA(hex) {
     const m = /^#?([0-9a-fA-F]{6})$/.exec(hex || '');
@@ -198,12 +202,12 @@ function applyBXTpaint(ctx, p) {
 
     ctx.imageSmoothingEnabled = false;
     const w = canvas.width, h = canvas.height;
-    const instColor = resolveColorKey(p.bxtpaintColor, p._activePalette) || '#000000';
+    const pal = p._activePalette;
 
     for (const op of ops) {
         const size = Math.max(1, Math.round(op.size || 8));
         if (op.type === 'fill') {
-            floodFill(ctx, op, w, h, instColor);
+            floodFill(ctx, op, w, h, opColor(op, pal));
             continue;
         }
         const cells = new Set();
@@ -219,7 +223,7 @@ function applyBXTpaint(ctx, p) {
             default: continue;
         }
         if (!cells.size) continue;
-        paintCells(ctx, cells, size, op.type === 'eraser' ? '#000' : instColor, op.type === 'eraser');
+        paintCells(ctx, cells, size, op.type === 'eraser' ? '#000' : opColor(op, pal), op.type === 'eraser');
     }
 }
 
@@ -259,7 +263,6 @@ export const bxtpaintEffect = {
         bxtpaintEnabled:      { default: false, label: 'Enable' },
         bxtpaintTool:         { default: 'brush', label: 'Tool', type: 'iconButtons', options: TOOL_OPTIONS, icons: TOOL_ICONS },
         bxtpaintSize:         { default: 8, min: 1, max: 64, label: 'Pixel Size' },
-        bxtpaintColorNote:    { default: '', type: 'info', label: 'One color per layer — add another BXTpaint for more colors.' },
         bxtpaintColor:        { default: 'palette0', label: 'Color', type: 'paletteSelect', options: STANDARD_COLOR_OPTIONS },
         bxtpaintSprayArea:    { default: 24, min: 2, max: 200, label: 'Spray Area' },
         bxtpaintSprayDensity: { default: 8, min: 1, max: 40, label: 'Spray Density' },
@@ -278,7 +281,7 @@ export const bxtpaintEffect = {
             groups.push({ label: 'Shape', keys: ['bxtpaintShapeFill'] });
         }
         if (p.bxtpaintTool !== 'eraser') {
-            groups.push({ label: 'Color', keys: ['bxtpaintColorNote', 'bxtpaintColor'] });
+            groups.push({ label: 'Color', keys: ['bxtpaintColor'] });
         }
         groups.push(blend.uiGroup, fade.uiGroup);
         return groups;
