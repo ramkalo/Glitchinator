@@ -198,10 +198,10 @@ document.getElementById('blankBlack1080p').addEventListener('click', function(e)
 document.getElementById('blankWhite1440p').addEventListener('click', function(e) { e.stopPropagation(); loadBlankCanvas(1440, 2560, '#ffffff'); });
 document.getElementById('blankBlack1440p').addEventListener('click', function(e) { e.stopPropagation(); loadBlankCanvas(1440, 2560, '#000000'); });
 
-document.getElementById('blankWhite6600').addEventListener('click', function(e) { e.stopPropagation(); loadBlankCanvas(6600, 5100, '#ffffff'); });
-document.getElementById('blankBlack6600').addEventListener('click', function(e) { e.stopPropagation(); loadBlankCanvas(6600, 5100, '#000000'); });
-document.getElementById('blankWhite5100p').addEventListener('click', function(e) { e.stopPropagation(); loadBlankCanvas(5100, 6600, '#ffffff'); });
-document.getElementById('blankBlack5100p').addEventListener('click', function(e) { e.stopPropagation(); loadBlankCanvas(5100, 6600, '#000000'); });
+document.getElementById('blankWhite3440').addEventListener('click', function(e) { e.stopPropagation(); loadBlankCanvas(3440, 1440, '#ffffff'); });
+document.getElementById('blankBlack3440').addEventListener('click', function(e) { e.stopPropagation(); loadBlankCanvas(3440, 1440, '#000000'); });
+document.getElementById('blankWhite3440p').addEventListener('click', function(e) { e.stopPropagation(); loadBlankCanvas(1440, 3440, '#ffffff'); });
+document.getElementById('blankBlack3440p').addEventListener('click', function(e) { e.stopPropagation(); loadBlankCanvas(1440, 3440, '#000000'); });
 
 document.getElementById('blankWhite1920sq').addEventListener('click', function(e) { e.stopPropagation(); loadBlankCanvas(1920, 1920, '#ffffff'); });
 document.getElementById('blankBlack1920sq').addEventListener('click', function(e) { e.stopPropagation(); loadBlankCanvas(1920, 1920, '#000000'); });
